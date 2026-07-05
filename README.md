@@ -1,23 +1,43 @@
 # uw_dyn: dynamika 3D układów wieloczłonowych
 
-Program do obliczeń dynamiki przestrzennej układów wieloczłonowych (multibody dynamics), napisany w Pythonie w ramach pracy magisterskiej (2016).
-
-Autor: Marcin Szalajski
+Biblioteka Pythona do obliczeń dynamiki przestrzennej układów wieloczłonowych
+(multibody dynamics). Powstała w ramach pracy magisterskiej (2016), obecnie
+rozwijana jako pakiet wielokrotnego użytku. Autor: Marcin Szalajski.
 
 ## Opis metody
 
 Ruch każdego członu (bryły sztywnej) opisany jest 7 współrzędnymi: 3 współrzędnymi położenia środka masy oraz 4 parametrami Eulera (kwaternionem) określającymi orientację. Równania ruchu formułowane są jako układ równań różniczkowo-algebraicznych z mnożnikami Lagrange'a, a więzy stabilizowane są metodą Baumgarte'a (parametry `alfa` i `beta`). Całkowanie po czasie realizuje procedura `sym2`, a wyniki zapisywane są do pliku CSV.
 
-## Zawartość repozytorium
+Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 
-| Plik | Opis |
+## Struktura repozytorium
+
+| Ścieżka | Opis |
 |------|------|
-| `uw_dyn.py` | Główny moduł obliczeniowy: klasy członów, więzów, sił oraz procedury symulacji |
-| `lancuch02.py` | Przykład użycia: symulacja łańcucha czterech członów połączonych przegubami obrotowymi |
-| `lancuch.blend` | Scena Blendera do wizualizacji ruchu łańcucha |
-| `MSzalajski_mgr4.pdf` | Praca magisterska dokumentująca metodę i obliczenia |
+| `src/uw_dyn/` | pakiet: klasy członów, więzów, sił oraz procedury symulacji |
+| `tests/` | testy pytest: algebra, walidacja fizyczna na wahadle, regresja łańcucha |
+| `przyklady/lancuch02.py` | przykład: łańcuch czterech członów połączonych przegubami obrotowymi |
+| `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
+| `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
+| `PLAN.md` | mapa drogowa rozwoju (docelowo rdzeń w Rust + wizualizacja web) |
 
-## Główne elementy modułu `uw_dyn.py`
+## Instalacja i uruchomienie
+
+Projekt używa [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv sync                                # instalacja pakietu i zależności
+uv run pytest                          # testy
+uv run python przyklady/lancuch02.py   # przykładowa symulacja -> lancuch.csv
+```
+
+Jako zależność w innym projekcie:
+
+```bash
+uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
+```
+
+## Główne elementy pakietu
 
 - `Uklad`: klasa zbiorcza układu; metody `dodajCzlon`, `dodajWiez`, `dodajWiezD`, `dodajSileWewn`, `dodajSileZewn`, symulacja (`sym`, `sym2`), rozwiązywanie więzów metodą Newtona-Raphsona (`newraph`) oraz zapis wyników (`zapiszWyniki`).
 - `Czlon`: człon układu zdefiniowany masą i tensorem bezwładności.
@@ -35,31 +55,35 @@ Ruch każdego członu (bryły sztywnej) opisany jest 7 współrzędnymi: 3 wspó
 
 ## Przykład użycia
 
-Przykład `lancuch02.py` buduje łańcuch czterech członów zawieszony w punkcie stałym, połączony przegubami obrotowymi, z elementami sprężysto-tłumiącymi i wymuszeniem siłowym:
-
 ```python
 from uw_dyn import *
 import numpy as np
 
 ukl = Uklad()
-ukl.dodajCzlon(Czlon(1, 1, J1))
+ukl.dodajCzlon(Czlon(1, 1, np.diag([10., 10., 10.])))
 ukl.dodajWiez(Polaczenie_Obr(0, 1, wektor(0,0,0), wektor(0,0,2),
                              wektor(1,0,0), wektor(0,0,1), wektor(0,1,0)))
 ukl.grawitacja = True
 
-ukl.sym2(y0, t0, tK, dt, alfa, beta)
-ukl.zapiszWyniki('lancuch.csv')
+q0 = np.zeros(7); q0[2] = -2; q0[3] = 1
+y0 = np.concatenate((q0, np.zeros(7)))
+
+ukl.sym2(y0, t0=0, tK=50, dt=0.01, alfa=1, beta=1)
+ukl.zapiszWyniki('wyniki.csv')
 ```
 
-Uruchomienie:
+Wektor stanu ma długość `14*N`: najpierw `3*N` współrzędnych położeń, potem `4*N` parametrów Eulera, następnie prędkości w tym samym porządku. Wyniki (CSV, wiersz na krok czasowy) mogą posłużyć do wizualizacji, na przykład w Blenderze.
 
-```bash
-python lancuch02.py
-```
+## Testy
 
-Wynikowy plik `lancuch.csv` zawiera przebiegi współrzędnych w czasie i może posłużyć do wizualizacji, na przykład w Blenderze (`lancuch.blend`).
+Testy walidacyjne sprawdzają fizykę względem rozwiązań analitycznych:
 
-## Wymagania
+- okres małych drgań wahadła fizycznego zgodny ze wzorem `T = 2π·sqrt(I/(mgL))` z dokładnością 2%,
+- zachowanie energii mechanicznej bez tłumienia,
+- spełnienie więzów kinematycznych i normy kwaternionów w trakcie ruchu,
+- własności macierzy obrotu i funkcji kwaternionowych,
+- regresja: stabilność symulacji łańcucha 4 członów.
 
-- Python 3
-- NumPy, SciPy, Matplotlib
+## Kierunek rozwoju
+
+Zobacz `PLAN.md`: docelowo rdzeń obliczeniowy w Rust (PyO3 dla Pythona, WASM dla przeglądarki) oraz interaktywna wizualizacja web (Three.js). Wersja Python pozostaje implementacją wzorcową.

@@ -1,0 +1,26 @@
+[project]
+name = "uw-dyn"
+version = "0.1.0"
+description = "Dynamika 3D ukladow wieloczlonowych (multibody dynamics): parametry Eulera, mnozniki Lagrange'a, stabilizacja Baumgarte'a"
+authors = [{ name = "Marcin Szalajski" }]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/uw_dyn"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
