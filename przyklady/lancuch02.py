@@ -73,11 +73,10 @@ y0 = np.concatenate((q0, dq0) )
 
 t0 = 0
 tK = 50
-dt = 0.1
-
-alfa = 1
-beta = 1
+dt = 0.02
 
 
-ukl.sym2(y0,t0,tK,dt, alfa, beta)
+# domyslna stabilizacja wiezow: rzutowanie (dokladne wiezy, bez strojenia);
+# klasyczne Baumgarte: ukl.sym2(y0,t0,tK,dt, alfa=1, beta=1, stabilizacja='baumgarte')
+ukl.sym2(y0,t0,tK,dt)
 ukl.zapiszWyniki('lancuch.csv')
