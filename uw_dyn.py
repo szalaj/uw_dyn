@@ -107,9 +107,9 @@ def dG(dp):
 # tworzenie z wektoru macierzy
 # skosno-symetrycznej
 def skew(a):
-    ax=a[0]
-    ay=a[1]
-    az=a[2]
+    ax=float(np.asarray(a[0]).reshape(-1)[0])
+    ay=float(np.asarray(a[1]).reshape(-1)[0])
+    az=float(np.asarray(a[2]).reshape(-1)[0])
     A = np.array([[0, -az, ay],
     [az, 0, -ax],
     [-ay, ax, 0]])
@@ -981,7 +981,7 @@ class Uklad:
             
         F_q = self.jakobianK(q)
         #usuniecie kolumn odpowiadajacych z p
-        F_r = scipy.delete(F_q, kol, 1)
+        F_r = np.delete(F_q, kol, 1)
         #F_r = F_q[:,0:3]
         return F_r
     
@@ -993,7 +993,7 @@ class Uklad:
             
         F_q = self.jakobianK(q)
         #usuniecie kolumn odpowiadajacych z r
-        F_p = scipy.delete(F_q, kol, 1)
+        F_p = np.delete(F_q, kol, 1)
         return F_p
         
     # jakobianP par. eulera zbiorczo
@@ -1003,7 +1003,7 @@ class Uklad:
             
         Fp = self.jakobianP(q)
         #usuniecie kolumn odpowiadajacych z r
-        Fp_p = scipy.delete(Fp, kol, 1)
+        Fp_p = np.delete(Fp, kol, 1)
         return Fp_p
         
     # parametry eulera zbiorczo    
