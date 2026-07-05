@@ -52,6 +52,37 @@ def EA_to_EP(fi1,fi2,fi3):
     e3 = sin(0.5*(fi1+fi3))*cos(0.5*fi2)
     return e0,e1,e2,e3
 
+
+# iloczyn Hamiltona kwaternionow (parametrow Eulera) [e0,e1,e2,e3]
+def mnoz_kwaterniony(pa, pb):
+    a = np.asarray(pa, dtype=float).ravel()
+    b = np.asarray(pb, dtype=float).ravel()
+    return np.array([
+        a[0]*b[0] - a[1]*b[1] - a[2]*b[2] - a[3]*b[3],
+        a[0]*b[1] + a[1]*b[0] + a[2]*b[3] - a[3]*b[2],
+        a[0]*b[2] - a[1]*b[3] + a[2]*b[0] + a[3]*b[1],
+        a[0]*b[3] + a[1]*b[2] - a[2]*b[1] + a[3]*b[0],
+    ])
+
+
+# sprzezenie kwaternionu (obrot odwrotny dla kwaternionu jednostkowego)
+def sprzezenie_kwaternionu(p):
+    a = np.asarray(p, dtype=float).ravel()
+    return np.array([a[0], -a[1], -a[2], -a[3]])
+
+
+# wektor obrotu (os * kat) z kwaternionu; wybiera obrot krotszy (kat w [0,pi])
+def kwaternion_na_wektor_obrotu(p):
+    a = np.asarray(p, dtype=float).ravel()
+    if a[0] < 0:
+        a = -a
+    v = a[1:4]
+    nv = np.linalg.norm(v)
+    if nv < 1e-12:
+        return np.zeros(3)
+    kat = 2*np.arctan2(nv, a[0])
+    return kat*v/nv
+
 # macierz obrotowa
 def R(p):
     e0=p[0][0]

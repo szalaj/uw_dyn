@@ -15,6 +15,9 @@ from uw_dyn.algebra import (
     G,
     dG,
     skew,
+    mnoz_kwaterniony,
+    sprzezenie_kwaternionu,
+    kwaternion_na_wektor_obrotu,
 )
 from uw_dyn.czlony import Czlon
 from uw_dyn.wiezy import (
@@ -29,7 +32,7 @@ from uw_dyn.wiezy import (
     Kat,
 )
 from uw_dyn.sily import (SilaWewnProst, SilaWPunkcie, SilaKontaktu,
-                         MomentWzgledny, SilaZewn)
+                         MomentWzgledny, MomentSferyczny, SilaZewn)
 from uw_dyn.uklad import Uklad
 
 __all__ = [
@@ -37,7 +40,9 @@ __all__ = [
     "Polaczenie", "Para_Prostopadla", "Para_Prostopadla_D", "Para_Sferyczna",
     "Polaczenie_Obr", "Polaczenie_Cyl", "Polaczenie_Przes",
     "Odleglosc", "Kat",
-    "SilaWewnProst", "SilaWPunkcie", "SilaKontaktu", "MomentWzgledny", "SilaZewn",
+    "SilaWewnProst", "SilaWPunkcie", "SilaKontaktu",
+    "MomentWzgledny", "MomentSferyczny", "SilaZewn",
     "wektor", "wektor_p", "r_i", "dr_i", "p_i", "dp_i",
     "u2p", "EA_to_EP", "R", "G", "dG", "skew",
+    "mnoz_kwaterniony", "sprzezenie_kwaternionu", "kwaternion_na_wektor_obrotu",
 ]

@@ -183,13 +183,16 @@ drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
       głowa, ramiona (bark+łokieć, docelowo +nadgarstek), nogi (biodro+kolano
       +kostka). Masy i tensory bezwładności z tablic antropometrycznych
       (np. de Leva / Winter), skalowane wzrostem i masą zawodnika.
-- [ ] Realistyczne stawy 3D. Kluczowe ograniczenie obecnej biblioteki:
-      `Polaczenie_Obr` to 1 stopień swobody. Bark i biodro są kuliste (3 DOF),
-      a łokieć/kolano zawiasowe (1 DOF). ROZWIĄZANIE: albo złożyć staw kulisty
-      z 2–3 przegubów obrotowych w serii z drobnym członem pośrednim, albo
-      dodać do biblioteki napędzany staw kulisty (`Para_Sferyczna` + aktuator
-      3-osiowy). To warunkuje naturalne pozy (garda z łokciami w dół), których
-      `bokser.py` nie ma (model płaszczyzny poziomej — patrz jego opis).
+- [x] Realistyczne stawy 3D — **ZROBIONE 2026-07-06**: dodano `MomentSferyczny`
+      (napędzany staw kulisty 3 DOF = `Para_Sferyczna` + moment 3D w ramce
+      globalnej: M = -k·φ - c·(ω_j-ω_i), φ z wektora obrotu błędu orientacji).
+      Sprowadza człon do dowolnej zadanej orientacji względnej (`p_cel`,
+      podmienialny w sterowaniu), z zerowym błędem, i trzyma pozę pod
+      grawitacją. Bark i biodro modelujemy teraz jako staw kulisty, łokieć/
+      kolano jako `Polaczenie_Obr` (1 DOF). 8 testów (`test_staw_kulisty.py`).
+      To odblokowuje naturalne pozy (garda z łokciami w dół), których
+      `bokser.py` nie ma (płaszczyzna pozioma) — następny krok: przebudować
+      boksera na stawy kuliste w barkach.
 - [ ] Limity zakresu ruchu w stawach (miękkie ograniczniki: jednostronna
       sprężyna-tłumik przy przekroczeniu kąta granicznego).
 - [ ] Model „mięśni/napędów" stawów: aktuator momentu z ograniczeniem

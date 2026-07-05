@@ -6,7 +6,9 @@
 
 import numpy as np
 
-from uw_dyn.algebra import r_i, dr_i, p_i, dp_i, R, G, skew
+from uw_dyn.algebra import (r_i, dr_i, p_i, dp_i, R, G, skew,
+                            mnoz_kwaterniony, sprzezenie_kwaternionu,
+                            kwaternion_na_wektor_obrotu)
 
 
 class SilaWewnProst:
@@ -289,6 +291,75 @@ class MomentWzgledny:
             Qp_i = np.zeros((4, 1))
         else:
             Qp_i = -2*Gi.transpose().dot(Ri.transpose().dot(M))
+        return Qr_i, Qp_i, Qr_j, Qp_j
+
+
+class MomentSferyczny:
+    """Napedzany staw kulisty (3 stopnie swobody): aktuator momentowy
+    sprowadzajacy orientacje czlonu j do zadanej orientacji wzgledem czlonu i
+    (przestrzenna sprezyna-tlumik na obrocie 3D). Uzywac razem z
+    Para_Sferyczna, ktora wiaze polozenie (kula w panewce); ta klasa steruje
+    tylko orientacja.
+
+    p_cel: docelowy obrot wzgledny (parametry Eulera, z ukladu i do j);
+    domyslnie [1,0,0,0] = czlon j ustawiony jak i. p_cel mozna podmieniac
+    miedzy segmentami symulacji (sterowanie 3D, np. bark, biodro). Moment
+    liczony jest w ukladzie globalnym: M = -k*phi - c*(om_j - om_i), gdzie
+    phi to wektor obrotu bledu (od orientacji docelowej do biezacej), i
+    przykladany jako para wewnetrzna (+M na j, -M na i)."""
+
+    def __init__(self, i, j, k, c, p_cel=None):
+        self.i = i
+        self.j = j
+        self.k = k
+        self.c = c
+        self.p_cel = (np.array([1.0, 0.0, 0.0, 0.0]) if p_cel is None
+                      else np.asarray(p_cel, dtype=float).ravel())
+
+    def _blad(self, q, N):
+        """Wektor obrotu bledu (uklad globalny) orientacji czlonu j."""
+        pj = p_i(self.j, q, N).ravel()
+        pi = (np.array([1.0, 0.0, 0.0, 0.0]) if self.i == 0
+              else p_i(self.i, q, N).ravel())
+        p_docelowy = mnoz_kwaterniony(pi, self.p_cel)   # zadana orientacja j
+        q_err = mnoz_kwaterniony(pj, sprzezenie_kwaternionu(p_docelowy))
+        return kwaternion_na_wektor_obrotu(q_err)
+
+    def kat(self, q, N):
+        """Kat bledu orientacji (rad)."""
+        return float(np.linalg.norm(self._blad(q, N)))
+
+    def energia_potencjalna(self, q, N):
+        if self.k == 0:
+            return 0.0
+        return 0.5*self.k*self.kat(q, N)**2
+
+    def sila(self, q, dq, N):
+        pj = p_i(self.j, q, N)
+        Rj = R(pj)
+        Gj = G(pj)
+        om_j = Rj.dot(2*Gj.dot(dp_i(self.j, dq, N)))    # predkosc katowa globalna
+
+        if self.i == 0:
+            Ri = Gi = None
+            om_i = np.zeros((3, 1))
+        else:
+            pi = p_i(self.i, q, N)
+            Ri = R(pi)
+            Gi = G(pi)
+            om_i = Ri.dot(2*Gi.dot(dp_i(self.i, dq, N)))
+
+        phi = self._blad(q, N).reshape(3, 1)            # blad orientacji (global)
+        om_rel = om_j - om_i
+        M = -self.k*phi - self.c*om_rel                 # moment globalny na j
+
+        Qr_i = np.zeros((3, 1))
+        Qr_j = np.zeros((3, 1))
+        Qp_j = 2*Gj.transpose().dot(Rj.transpose().dot(M))
+        if self.i == 0:
+            Qp_i = np.zeros((4, 1))
+        else:
+            Qp_i = 2*Gi.transpose().dot(Ri.transpose().dot(-M))
         return Qr_i, Qp_i, Qr_j, Qp_j
 
 

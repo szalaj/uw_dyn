@@ -13,7 +13,7 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 - `src/uw_dyn/algebra.py`: wektory, kwaterniony (parametry Eulera), macierze R/G, skew.
 - `src/uw_dyn/czlony.py`: `Czlon`.
 - `src/uw_dyn/wiezy.py`: pary kinematyczne (`Para_Sferyczna`, `Polaczenie_Obr`, `Polaczenie_Cyl`, `Polaczenie_Przes`, `Para_Prostopadla`, `Para_Prostopadla_D`) i więzy kierujące (`Odleglosc`, `Kat`).
-- `src/uw_dyn/sily.py`: `SilaWewnProst` (sprężyna/tłumik/siła stała, opcja `tylko_rozciaganie` dla lin), `SilaWPunkcie` (siła w układzie ciała zaczepiona w punkcie, np. ciąg wirnika), `SilaKontaktu` (kontakt penalty z podłożem z=0, tarcie regularyzowane), `MomentWzgledny` (aktuator obrotowy w przegubie: sprężyna-tłumik z celem kątowym), `SilaZewn`.
+- `src/uw_dyn/sily.py`: `SilaWewnProst` (sprężyna/tłumik/siła stała, opcja `tylko_rozciaganie` dla lin), `SilaWPunkcie` (siła w układzie ciała zaczepiona w punkcie, np. ciąg wirnika), `SilaKontaktu` (kontakt penalty z podłożem z=0, tarcie regularyzowane), `MomentWzgledny` (aktuator obrotowy 1 DOF w przegubie: sprężyna-tłumik z celem kątowym), `MomentSferyczny` (napędzany staw kulisty 3 DOF: sprężyna-tłumik na orientacji 3D, łączyć z `Para_Sferyczna`), `SilaZewn`.
 - `src/uw_dyn/uklad.py`: `Uklad` (składanie równań ruchu, symulacja `sym`/`sym2`, `newraph`, rzutowania `projekcja_polozen`/`projekcja_predkosci`, metody energii, `zapiszWyniki`).
 - `src/uw_dyn/dynamika.py`: alias zgodności wstecznej (re-eksport wszystkiego).
 - `src/uw_dyn/__init__.py`: publiczne API pakietu (jawna lista `__all__`).
@@ -25,7 +25,7 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 
 ## Nowe siły (interfejs `sila(q, dq, N) -> (Qr_i, Qp_i, Qr_j, Qp_j)`)
 
-Każda siła wewnętrzna implementuje `sila(...)` oraz `energia_potencjalna(q, N)`. `SilaWPunkcie`, `SilaKontaktu` i `MomentWzgledny` ustawiają `i=0` i działają na człon `j` (jak siły „do podstawy"). Ich wektory (ciąg, cel kąta) można podmieniać między segmentami symulacji, co daje dyskretny sterownik (regulator drona, chód pieska) bez zmian w silniku.
+Każda siła wewnętrzna implementuje `sila(...)` oraz `energia_potencjalna(q, N)`. `SilaWPunkcie`, `SilaKontaktu` i `MomentWzgledny` ustawiają `i=0` i działają na człon `j` (jak siły „do podstawy"). Ich wektory (ciąg, cel kąta, `p_cel` orientacji) można podmieniać między segmentami symulacji, co daje dyskretny sterownik (regulator drona, chód pieska) bez zmian w silniku. `MomentSferyczny` nie wiąże położenia — to napędzany staw kulisty składany z `Para_Sferyczna` (więz kuli w panewce) + moment 3D; cel `p_cel` to orientacja względna (parametry Eulera, z układu i do j). To fundament Etapu A (biomechaniczny model człowieka: bark i biodro jako stawy kuliste).
 
 ## Uruchamianie
 

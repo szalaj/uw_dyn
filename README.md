@@ -67,7 +67,8 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
   - `SilaWewnProst`: element sprężysto-tłumiący z siłą stałą (sprężyna, tłumik, siłownik) między punktami dwóch członów; z `tylko_rozciaganie=True` działa jak lina,
   - `SilaWPunkcie`: siła zadana w układzie ciała, zaczepiona w punkcie (np. ciąg wirnika drona, podąża za orientacją),
   - `SilaKontaktu`: jednostronny kontakt punktu ciała z podłożem z=0 (model penalty ze sprężyną, tłumieniem i tarciem),
-  - `MomentWzgledny`: aktuator obrotowy w przegubie (sprężyna-tłumik dążący do zadanego kąta), do napędu stawów,
+  - `MomentWzgledny`: aktuator obrotowy 1 DOF w przegubie (sprężyna-tłumik dążący do zadanego kąta), do napędu stawów zawiasowych (kolano, łokieć),
+  - `MomentSferyczny`: napędzany staw kulisty 3 DOF (sprężyna-tłumik na orientacji 3D dążący do zadanej orientacji względnej); łączyć z `Para_Sferyczna`, która wiąże położenie, do stawów kulistych (bark, biodro),
   - `SilaZewn`: siła lub moment zewnętrzny w osiach globalnych działający na wybrany człon,
   - grawitacja włączana flagą `ukl.grawitacja = True`.
 
