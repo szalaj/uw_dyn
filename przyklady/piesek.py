@@ -1,20 +1,16 @@
 # -*- coding: utf-8 -*-
-# Przyklad: mini-piesek (czworonog) w trucie.
+# Przyklad: mini-piesek (czworonog) robiacy przysiady.
 #
-# Rozwiniecie najprostszego robota kroczacego: zamiast dwoch patykow
-# pelny czworonog z podstawa swobodna (floating base):
-#   - tulow (1 czlon),
-#   - 4 nogi po 2 czlony (udo + podudzie), przeguby obrotowe (os y) w
-#     biodrze i kolanie,
-#   - stopy dotykaja podloza przez SilaKontaktu (model penalty z tarciem),
-#   - stawy napedzane aktuatorami MomentWzgledny (sprezyna-tlumik z celem
-#     katowym), a cele katow modulowane sa faza chodu (dyskretny sterownik
-#     co SEGMENT).
+# Rozwiniecie przykladu przysiadu na cztery nogi: tulow swobodny
+# (floating base) podparty na czterech dwuczlonowych nogach; stopy stoja
+# na podlozu (SilaKontaktu), a stawy (biodro i kolano kazdej nogi)
+# napedzane sa aktuatorami MomentWzgledny. Piesek symetrycznie ugina
+# wszystkie nogi, tulow opada, po czym prostuje je i wstaje.
 #
-# Chod: pelzajacy (crawl) - w danej chwili tylko jedna noga jest w wymachu,
-# trzy pozostale podpieraja (chod statycznie stabilny). W fazie podporowej
-# biodro przesuwa sie do tylu, odpychajac tulow do przodu; w fazie wymachu
-# kolano zgina sie (unos stopy), a biodro wraca do przodu.
+# Kinematyka przysiadu (nogi o rownych czlonach L): przy kacie uda phi
+# i kacie kolana -2*phi stopa jest dokladnie pod biodrem, a tulow na
+# wysokosci 2*L*cos(phi). Zmieniajac phi w czasie, tulow opada i wstaje,
+# a stopy pozostaja w miejscu (brak poslizgu).
 #
 # Wynik: web/dane_piesek.js do wizualizacji Three.js (web/piesek.html).
 
@@ -25,12 +21,11 @@ import numpy as np
 
 from uw_dyn import (Uklad, Czlon, Polaczenie_Obr, SilaKontaktu, MomentWzgledny,
                     wektor, u2p, R, wektor_p)
-from uw_dyn.uklad import GRAWITACJA
 
 # ----- wymiary (metry, kilogramy) -----
 DL_TULOW, SZER_TULOW = 0.40, 0.18
 M_TULOW = 4.0
-L_UDO, L_PODUDZIE = 0.14, 0.14
+L_NOGI = 0.15         # dlugosc czlonu nogi (udo = podudzie) [m]
 M_NOGI = 0.4
 PROMIEN = 0.03
 
@@ -42,28 +37,28 @@ BIODRA = {
     'TP': wektor(-DL_TULOW/2, -SZER_TULOW/2, 0),
 }
 NOGI = list(BIODRA.keys())
-# przesuniecia faz chodu pelzajacego (sekwencja: TL, PL, TP, PP),
-# co cwierc okresu inna noga w wymachu -> zawsze 3 stopy na ziemi
-PRZESUNIECIE = {'TL': 0.0, 'PL': 0.5, 'TP': 0.25, 'PP': 0.75}
 
-# geometria nogi: udo i podudzie skierowane w dol, lekkie zgiecie kolana
-KAT_BIODRA0 = 0.15    # wychylenie uda do przodu [rad]
-KAT_KOLANA0 = -0.55   # zgiecie kolana (podudzie do tylu) [rad]
-H_TULOW = L_UDO*np.cos(KAT_BIODRA0) + L_PODUDZIE*np.cos(KAT_BIODRA0+KAT_KOLANA0)
-
+# ----- konfiguracja przysiadu -----
+PHI_STAC = 0.42       # kat uda na stojaco [rad] -> tulow wyzej
+PHI_KUCA = 0.95       # kat uda w glebokim przysiadzie -> tulow nizej
 OS_Y = np.array([0.0, 1.0, 0.0])
 OSIE = (wektor(1, 0, 0), wektor(0, 0, 1), wektor(0, 1, 0))  # przegub obrotowy wokol y
 
-# ----- sterownik chodu -----
+
+def wys_tulowia(phi):
+    return 2*L_NOGI*np.cos(phi)
+
+
+H_STAC = wys_tulowia(PHI_STAC)
+
+# ----- sterownik przysiadu -----
 SEGMENT = 0.005
-DT = 0.001
-OKRES = 1.2           # okres pelnego cyklu chodu [s]
-DUTY = 0.75           # ulamek cyklu w fazie podporowej (3 stopy na ziemi)
-AMPL_BIODRA = 0.28    # zakres przesuwu biodra przod-tyl [rad]
-UNOS_KOLANA = 0.7     # dodatkowe zgiecie kolana w wymachu (unos stopy) [rad]
-K_BIODRA, C_BIODRA = 80.0, 2.5
-K_KOLANA, C_KOLANA = 80.0, 2.5
-CZAS = 6.0
+DT = 0.0005
+OKRES = 2.2           # okres jednego przysiadu [s]
+LICZBA_PRZYSIADOW = 3
+K_STAWU, C_STAWU = 80.0, 3.0
+CZAS_STAC = 1.0       # stabilizacja na stojaco przed przysiadami [s]
+CZAS = CZAS_STAC + LICZBA_PRZYSIADOW*OKRES + 0.6
 
 
 def tensor_preta(m, L):
@@ -73,14 +68,13 @@ def tensor_preta(m, L):
 
 
 def tensor_tulowia():
-    Jx = M_TULOW*(SZER_TULOW**2 + (0.1)**2)/12
-    Jy = M_TULOW*(DL_TULOW**2 + (0.1)**2)/12
+    Jx = M_TULOW*(SZER_TULOW**2 + 0.1**2)/12
+    Jy = M_TULOW*(DL_TULOW**2 + 0.1**2)/12
     Jz = M_TULOW*(DL_TULOW**2 + SZER_TULOW**2)/12
     return np.diag([Jx, Jy, Jz])
 
 
 def numery():
-    """Mapa nazw czlonow na numery: tulow=1, potem udo/podudzie kazdej nogi."""
     nr = {'tulow': 1}
     k = 2
     for noga in NOGI:
@@ -94,30 +88,32 @@ NR = numery()
 N_CZLONOW = 1 + 2*len(NOGI)
 
 
+def katy_nogi(phi):
+    """Kat biodra i kolana dla zadanego kata uda phi (stopa pod biodrem)."""
+    return phi, -2*phi
+
+
 def zbuduj():
     ukl = Uklad()
     ukl.dodajCzlon(Czlon(NR['tulow'], M_TULOW, tensor_tulowia()))
     for noga in NOGI:
-        ukl.dodajCzlon(Czlon(NR[noga+'_udo'], M_NOGI, tensor_preta(M_NOGI, L_UDO)))
-        ukl.dodajCzlon(Czlon(NR[noga+'_podudzie'], M_NOGI, tensor_preta(M_NOGI, L_PODUDZIE)))
+        ukl.dodajCzlon(Czlon(NR[noga+'_udo'], M_NOGI, tensor_preta(M_NOGI, L_NOGI)))
+        ukl.dodajCzlon(Czlon(NR[noga+'_podudzie'], M_NOGI, tensor_preta(M_NOGI, L_NOGI)))
 
+    kat_b0, kat_k0 = katy_nogi(PHI_STAC)
     aktuatory = {}
     for noga in NOGI:
         u, p = NR[noga+'_udo'], NR[noga+'_podudzie']
-        # biodro: tulow (punkt biodra) - gora uda
         ukl.dodajWiez(Polaczenie_Obr(NR['tulow'], u,
-                                     BIODRA[noga], wektor(0, 0, L_UDO/2), *OSIE))
-        # kolano: dol uda - gora podudzia
+                                     BIODRA[noga], wektor(0, 0, L_NOGI/2), *OSIE))
         ukl.dodajWiez(Polaczenie_Obr(u, p,
-                                     wektor(0, 0, -L_UDO/2), wektor(0, 0, L_PODUDZIE/2), *OSIE))
-        # kontakt stopy (dol podudzia); male eps -> sztywne tarcie, malo slizgu
-        ukl.dodajSileWewn(SilaKontaktu(p, wektor(0, 0, -L_PODUDZIE/2),
+                                     wektor(0, 0, -L_NOGI/2), wektor(0, 0, L_NOGI/2), *OSIE))
+        ukl.dodajSileWewn(SilaKontaktu(p, wektor(0, 0, -L_NOGI/2),
                                        k=8000.0, c=80.0, mu=1.2, eps=0.002))
-        # aktuatory: biodro (tulow-udo), kolano (udo-podudzie)
         akt_b = MomentWzgledny(NR['tulow'], u, wektor(0, 1, 0), wektor(0, 0, 1),
-                               K_BIODRA, KAT_BIODRA0, C_BIODRA)
+                               K_STAWU, kat_b0, C_STAWU)
         akt_k = MomentWzgledny(u, p, wektor(0, 1, 0), wektor(0, 0, 1),
-                               K_KOLANA, KAT_KOLANA0, C_KOLANA)
+                               K_STAWU, kat_k0, C_STAWU)
         ukl.dodajSileWewn(akt_b)
         ukl.dodajSileWewn(akt_k)
         aktuatory[noga] = (akt_b, akt_k)
@@ -126,86 +122,69 @@ def zbuduj():
     return ukl, aktuatory
 
 
-def q_startowe(h_tulow):
-    """Konfiguracja stojaca: tulow na wysokosci h, nogi zgiete symetrycznie."""
+def q_startowe(phi):
+    """Konfiguracja stojaca dla kata uda phi (stopy pod biodrami)."""
+    kat_b, kat_k = katy_nogi(phi)
+    h = wys_tulowia(phi)
     q = np.zeros(7*N_CZLONOW)
-    q[0:3] = [0, 0, h_tulow]
-    q[3*N_CZLONOW + 0:3*N_CZLONOW + 4] = [1, 0, 0, 0]  # kwaternion tulowia
-    Rt = np.eye(3)
+    q[0:3] = [0, 0, h]
+    q[3*N_CZLONOW:3*N_CZLONOW + 4] = [1, 0, 0, 0]  # kwaternion tulowia
 
     for noga in NOGI:
         u, p = NR[noga+'_udo'], NR[noga+'_podudzie']
-        biodro_glob = wektor(0, 0, h_tulow) + Rt.dot(BIODRA[noga])
-
-        Ru = R(wektor_p(*u2p(OS_Y, KAT_BIODRA0)))
-        srodek_uda = biodro_glob + Ru.dot(wektor(0, 0, -L_UDO/2))
-        kolano_glob = biodro_glob + Ru.dot(wektor(0, 0, -L_UDO))
-
-        Rp = R(wektor_p(*u2p(OS_Y, KAT_BIODRA0 + KAT_KOLANA0)))
-        srodek_pod = kolano_glob + Rp.dot(wektor(0, 0, -L_PODUDZIE/2))
+        biodro = wektor(0, 0, h) + BIODRA[noga]
+        Ru = R(wektor_p(*u2p(OS_Y, kat_b)))
+        srodek_uda = biodro + Ru.dot(wektor(0, 0, -L_NOGI/2))
+        kolano = biodro + Ru.dot(wektor(0, 0, -L_NOGI))
+        Rp = R(wektor_p(*u2p(OS_Y, kat_b + kat_k)))
+        srodek_pod = kolano + Rp.dot(wektor(0, 0, -L_NOGI/2))
 
         q[3*(u-1):3*(u-1)+3] = srodek_uda.ravel()
         q[3*(p-1):3*(p-1)+3] = srodek_pod.ravel()
-        q[3*N_CZLONOW + 4*(u-1):3*N_CZLONOW + 4*(u-1)+4] = u2p(OS_Y, KAT_BIODRA0)
-        q[3*N_CZLONOW + 4*(p-1):3*N_CZLONOW + 4*(p-1)+4] = u2p(OS_Y, KAT_BIODRA0 + KAT_KOLANA0)
+        q[3*N_CZLONOW + 4*(u-1):3*N_CZLONOW + 4*(u-1)+4] = u2p(OS_Y, kat_b)
+        q[3*N_CZLONOW + 4*(p-1):3*N_CZLONOW + 4*(p-1)+4] = u2p(OS_Y, kat_b + kat_k)
     return q
 
 
-def cele_chodu(t):
-    """Zadane katy biodra i kolana dla kazdej nogi w chwili t (chod pelzajacy).
-
-    Faza [0, DUTY): podpora, biodro przesuwa sie do tylu (odpycha tulow).
-    Faza [DUTY, 1): wymach, biodro wraca do przodu, kolano zgina sie (unos)."""
-    cele = {}
-    for noga in NOGI:
-        faza = (t/OKRES + PRZESUNIECIE[noga]) % 1.0
-        if faza < DUTY:
-            # podpora: biodro od +ampl/2 (przod) do -ampl/2 (tyl) liniowo
-            s = faza/DUTY
-            kat_b = KAT_BIODRA0 + AMPL_BIODRA*(0.5 - s)
-            kat_k = KAT_KOLANA0
-        else:
-            # wymach: biodro wraca do przodu, kolano sie zgina i prostuje
-            s = (faza - DUTY)/(1.0 - DUTY)
-            kat_b = KAT_BIODRA0 + AMPL_BIODRA*(-0.5 + s)
-            kat_k = KAT_KOLANA0 - UNOS_KOLANA*np.sin(np.pi*s)
-        cele[noga] = (kat_b, kat_k)
-    return cele
+def phi_celu(t):
+    """Kat uda w chwili t: stanie, potem plynne przysiady (kosinusoida)."""
+    if t < CZAS_STAC:
+        return PHI_STAC
+    faza = (t - CZAS_STAC)/OKRES
+    if faza >= LICZBA_PRZYSIADOW:
+        return PHI_STAC
+    # 0 na gorze, 1 w dole, plynnie
+    zejscie = (1 - np.cos(2*np.pi*faza))/2
+    return PHI_STAC + (PHI_KUCA - PHI_STAC)*zejscie
 
 
 def symuluj():
     ukl, aktuatory = zbuduj()
-    q = q_startowe(H_TULOW)
+    q = ukl.projekcja_polozen(q_startowe(PHI_STAC))
     dq = np.zeros(7*N_CZLONOW)
 
-    # osadzenie na wiezach i chwila stabilizacji stojac (bez nagrywania:
-    # poczatkowy transient osiadania na kontakcie nie jest interesujacy)
-    q = ukl.projekcja_polozen(q)
     klatki = []
     t = 0.0
     n_seg = int(CZAS/SEGMENT)
-    start_chodu = 1.0
-
     for seg in range(n_seg):
-        if t >= start_chodu:
-            cele = cele_chodu(t - start_chodu)
-            for noga in NOGI:
-                akt_b, akt_k = aktuatory[noga]
-                akt_b.theta_cel, akt_k.theta_cel = cele[noga]
+        kat_b, kat_k = katy_nogi(phi_celu(t))
+        for noga in NOGI:
+            akt_b, akt_k = aktuatory[noga]
+            akt_b.theta_cel = kat_b
+            akt_k.theta_cel = kat_k
 
         ukl.sym2(np.concatenate((q, dq)), 0.0, SEGMENT, DT)
         Y = ukl.Y
-        if t >= start_chodu:
-            for w in Y[:-1]:
-                klatki.append(w[0:7*N_CZLONOW].copy())
+        for w in Y[:-1]:
+            klatki.append(w[0:7*N_CZLONOW].copy())
         q = Y[-1][0:7*N_CZLONOW].copy()
         dq = Y[-1][7*N_CZLONOW:14*N_CZLONOW].copy()
         t += SEGMENT
 
-    return ukl, klatki, q
+    return ukl, klatki
 
 
-def eksportuj(klatki, co_ile=15, plik='web/dane_piesek.js'):
+def eksportuj(klatki, co_ile=12, plik='web/dane_piesek.js'):
     dane_klatki = []
     for q in klatki[::co_ile]:
         czlony = []
@@ -218,7 +197,7 @@ def eksportuj(klatki, co_ile=15, plik='web/dane_piesek.js'):
 
     dane = {
         'dt': DT*co_ile,
-        'wymiary': {'udo': L_UDO, 'podudzie': L_PODUDZIE,
+        'wymiary': {'udo': L_NOGI, 'podudzie': L_NOGI,
                     'tulow': DL_TULOW, 'szer': SZER_TULOW},
         'nogi': NOGI,
         'indeksy': {'tulow': 0,
@@ -233,12 +212,11 @@ def eksportuj(klatki, co_ile=15, plik='web/dane_piesek.js'):
 
 
 if __name__ == '__main__':
-    ukl, klatki, q = symuluj()
-    x_koncowe = float(q[0])
-    z_koncowe = float(q[2])
-    print(f'tulow: x={x_koncowe:.3f} m (przebyta droga), wysokosc z={z_koncowe:.3f} m')
-    if z_koncowe < 0.5*H_TULOW:
-        print('UWAGA: piesek sie przewrocil (niska wysokosc tulowia)')
+    ukl, klatki = symuluj()
+    zt = [q[2] for q in klatki]
+    print(f'wysokosc tulowia: stojac {H_STAC:.3f} m, '
+          f'zakres w przysiadach {min(zt):.3f}..{max(zt):.3f} m')
+    print(f'najglebszy przysiad: tulow o {H_STAC - min(zt):.3f} m nizej')
 
     sciezka = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            '..', 'web', 'dane_piesek.js')

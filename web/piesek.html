@@ -29,12 +29,12 @@
 <body>
 <div id="scena"></div>
 <div id="panel">
-  <h1>Mini-piesek (czworonóg)</h1>
+  <h1>Mini-piesek: przysiady</h1>
   <p>Tułów swobodny plus cztery dwuczłonowe nogi, przeguby obrotowe
      w biodrach i kolanach napędzane aktuatorami momentu (sprężyna-tłumik).
-     Stopy dotykają podłoża przez kontakt penalty z tarciem. Chód pełzający:
-     jedna noga w wymachu, trzy podpierają.</p>
-  <p>Przebyta droga: <span id="dystans">0.00 m</span></p>
+     Stopy stoją na podłożu (kontakt penalty z tarciem). Piesek symetrycznie
+     ugina wszystkie nogi: tułów opada i wstaje, stopy zostają w miejscu.</p>
+  <p>Wysokość tułowia: <span id="dystans">0.00 m</span></p>
   <p>Mysz: obracanie, kółko: przybliżenie.</p>
 </div>
 <div id="sterowanie">
@@ -155,7 +155,7 @@ const poleCzas = document.getElementById('czas');
 const poleDyst = document.getElementById('dystans');
 const wyborTempa = document.getElementById('tempo');
 const polePetla = document.getElementById('petla');
-let gra = true, klatka = 0, akumulator = 0, x0 = null;
+let gra = true, klatka = 0, akumulator = 0;
 
 przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
 suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustawKlatke(klatka); };
@@ -171,7 +171,6 @@ function ustawKlatke(nr) {
   const t = kl[DANE.indeksy.tulow];
   tulow.position.set(...t.r);
   tulow.quaternion.set(t.p[1], t.p[2], t.p[3], t.p[0]);
-  if (x0 === null) x0 = t.r[0];
 
   for (const noga of DANE.nogi) {
     const [iu, ip] = DANE.indeksy[noga];
@@ -185,10 +184,10 @@ function ustawKlatke(nr) {
     nogi[noga].stopa.position.copy(stopaPoz);
   }
 
-  poleDyst.textContent = (t.r[0] - x0).toFixed(2) + ' m';
+  poleDyst.textContent = t.r[2].toFixed(3) + ' m';
   poleCzas.textContent = (nr * DANE.dt).toFixed(2) + ' s';
   suwak.value = nr;
-  kontrola.target.lerp(new THREE.Vector3(t.r[0], t.r[2], -t.r[1]), 0.08);
+  kontrola.target.lerp(new THREE.Vector3(0, t.r[2], 0), 0.05);
 }
 
 let poprzedni = performance.now();
@@ -201,7 +200,7 @@ function petla(teraz) {
     while (akumulator >= DANE.dt) {
       akumulator -= DANE.dt;
       klatka += 1;
-      if (klatka >= klatki.length) { klatka = polePetla.checked ? 0 : klatki.length - 1; x0 = null; }
+      if (klatka >= klatki.length) klatka = polePetla.checked ? 0 : klatki.length - 1;
     }
     ustawKlatke(klatka);
   }

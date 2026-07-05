@@ -34,11 +34,15 @@ weryfikacyjne całości (fizyka + stabilność numeryczna + wizualizacja).
 
 - **Przysiad**: gotowy (mięśnie sprężysto-tłumiące, równowaga statyczna).
 - **Robot kroczący → mini-piesek**: `robot_kroczacy.py` (compass gait, 2 człony)
-  zostaje jako najprostszy przykład; `piesek.py` to czworonóg (tułów + 4 nogi
-  dwuczłonowe, 9 członów, kontakt stóp `SilaKontaktu`, stawy `MomentWzgledny`,
-  chód pełzający). Piesek idzie do przodu i nie przewraca się (~7.5 m / 5 s);
-  chód jest otwarty (bez balansu), więc czuły na parametry: NIE stroić dalej
-  bez potrzeby, obecne wartości w `piesek.py` są sprawdzone i spójne z danymi.
+  zostaje jako najprostszy przykład chodu; `piesek.py` to czworonóg (tułów +
+  4 nogi dwuczłonowe, 9 członów, kontakt stóp `SilaKontaktu`, stawy
+  `MomentWzgledny`). Zaczynamy od PRZYSIADÓW, nie od chodu: piesek stoi na
+  czterech nogach i symetrycznie ugina wszystkie stawy (kinematyka kolano =
+  −2·biodro trzyma stopy dokładnie pod biodrami), tułów opada z 0.274 do
+  0.169 m i wstaje. To stabilne i niewrażliwe na parametry. Chód (otwarty,
+  bez balansu) był niestabilny i został odłożony; wersja z chodem jest
+  w historii gita. Uwaga: głębsze zgięcie kolan wymaga `dt=0.0005` (przy
+  `dt=0.001` całkowanie się rozbiega).
 - **Kwadrokopter**: gotowy (`dron.py`, regulator kaskadowy PD 100 Hz, ładunek
   na linie, misja 3 punktów).
 
