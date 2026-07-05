@@ -21,8 +21,9 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
 | `przyklady/piesek.py` | mini-piesek: czworonóg w chodzie pełzającym |
 | `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
+| `przyklady/bokser.py` | kickboxing: walka z cieniem, prawy sierpowy |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
-| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html` |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
@@ -40,7 +41,8 @@ uv run python przyklady/przysiad.py         # generuje web/dane_przysiad.js
 uv run python przyklady/robot_kroczacy.py   # generuje web/dane_robot.js
 uv run python przyklady/piesek.py           # generuje web/dane_piesek.js
 uv run python przyklady/dron.py             # generuje web/dane_dron.js
-cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/piesek.html
+uv run python przyklady/bokser.py           # generuje web/dane_bokser.js
+cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/bokser.html
 ```
 
 Jako zależność w innym projekcie:

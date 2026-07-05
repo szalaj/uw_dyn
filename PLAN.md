@@ -52,7 +52,20 @@ weryfikacyjne całości (fizyka + stabilność numeryczna + wizualizacja).
 - `SilaKontaktu` (kontakt penalty z tarciem) — stopy pieska, ładunek drona.
 - `MomentWzgledny` (aktuator obrotowy w przegubie) — stawy pieska.
 - `SilaWewnProst(tylko_rozciaganie=True)` — lina drona.
+- `MomentWzgledny` (aktuator obrotowy w przegubie) — stawy pieska i boksera.
 Wszystkie pokryte testami (40 testów). Dalsze kierunki: `docs/ULEPSZENIA.md`.
+
+### Dodatkowy przyklad pokazowy
+
+- **Bokser** (`przyklady/bokser.py` + `web/bokser.html`): kickboxing, walka
+  z cieniem, prawy sierpowy. Gorna czesc ciala (tulow + 2 ramiona po 2 czlony,
+  5 czlonow) sterowana aktuatorami `MomentWzgledny`; sekwencja garda ->
+  wyprowadzenie ciosu -> powrot. Sierpowy to ruch poziomy, wiec WSZYSTKIE osie
+  obrotu sa pionowe (z), a czlony ramion rozciagaja sie wzdluz lokalnej osi x
+  (grawitacja nie daje momentu wzgledem pionu -> wiez trzyma ramie bez
+  oklapniecia; jeden przegub obrotowy nie zlapie 3D barku, stad plaszczyzna
+  pozioma). Zweryfikowane: garda piesc przy brodzie (x=0.16), szczyt ciosu
+  x=0.40 z obrotem tulowia o 46 st. `dt=0.0005` (sztywne aktuatory).
 
 ## Decyzje architektoniczne (ustalone z Marcinem)
 

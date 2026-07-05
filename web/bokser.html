@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uw_dyn: kickboxing - prawy sierpowy</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1013;
+               font-family: system-ui, sans-serif; color: #e8e8e8; }
+  #scena { position: absolute; inset: 0; }
+  #panel { position: absolute; left: 12px; top: 12px; padding: 12px 16px;
+           background: rgba(13,16,19,.82); border: 1px solid #2a3442;
+           border-radius: 10px; max-width: 340px; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  #panel p { font-size: 12px; margin: 4px 0; color: #9fb0c3; }
+  #vmax { font-size: 20px; font-weight: 600; color: #ff6b5b; }
+  #sterowanie { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+                display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+                background: rgba(13,16,19,.82); border: 1px solid #2a3442;
+                border-radius: 10px; }
+  button { background: #b3402f; border: 0; color: #fff; border-radius: 6px;
+           padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #922f21; }
+  input[type=range] { width: 240px; }
+  select { background: #1b2330; color: #e8e8e8; border: 1px solid #2a3442;
+           border-radius: 6px; padding: 4px; }
+  #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 60px; }
+</style>
+</head>
+<body>
+<div id="scena"></div>
+<div id="panel">
+  <h1>Kickboxing: walka z cieniem</h1>
+  <p>Prawy sierpowy (hook): cios łukiem w płaszczyźnie poziomej, napędzany
+     skrętem korpusu. Górna część ciała jako układ wieloczłonowy (tułów +
+     ramiona), stawy napędzane aktuatorami momentu. Sekwencja: garda →
+     wyprowadzenie ciosu → powrót do gardy.</p>
+  <p>Prędkość pięści: <span id="vmax">0.0 m/s</span></p>
+  <p>Mysz: obracanie, kółko: przybliżenie.</p>
+</div>
+<div id="sterowanie">
+  <button id="graj">⏸ pauza</button>
+  <input type="range" id="suwak" min="0" value="0" step="1">
+  <span id="czas">0.00 s</span>
+  <select id="tempo">
+    <option value="0.15">0.15x</option>
+    <option value="0.3" selected>0.3x</option>
+    <option value="1">1x</option>
+  </select>
+  <label style="font-size:12px"><input type="checkbox" id="petla" checked> pętla</label>
+</div>
+
+<script src="dane_bokser.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const W = DANE.wymiary;
+const I = DANE.indeksy;
+const klatki = DANE.klatki;
+
+const scena = new THREE.Scene();
+scena.background = new THREE.Color(0x0d1013);
+scena.fog = new THREE.Fog(0x0d1013, 4, 12);
+
+const kamera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 100);
+kamera.position.set(2.1, 2.6, 2.7);   // z gory-boku: dobrze widac poziomy luk sierpowego
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('scena').appendChild(renderer.domElement);
+
+const kontrola = new OrbitControls(kamera, renderer.domElement);
+kontrola.target.set(0, 1.1, 0);
+kontrola.enableDamping = true;
+
+scena.add(new THREE.HemisphereLight(0xbcd4ff, 0x2a2420, 0.85));
+const slonce = new THREE.DirectionalLight(0xffffff, 1.7);
+slonce.position.set(3, 6, 3);
+slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+slonce.shadow.camera.left = -4; slonce.shadow.camera.right = 4;
+slonce.shadow.camera.top = 4; slonce.shadow.camera.bottom = -4;
+scena.add(slonce);
+
+// ring: podloga
+const podloga = new THREE.Mesh(
+  new THREE.CircleGeometry(3.2, 48),
+  new THREE.MeshStandardMaterial({ color: 0x20262e, roughness: 0.95 }));
+podloga.rotation.x = -Math.PI/2;
+podloga.receiveShadow = true;
+scena.add(podloga);
+scena.add(new THREE.GridHelper(6.4, 32, 0x33404f, 0x232c37));
+
+// grupa: os z symulacji -> os y three.js
+const swiat = new THREE.Group();
+swiat.rotation.x = -Math.PI/2;
+scena.add(swiat);
+
+const matCialo = new THREE.MeshStandardMaterial({ color: 0xd98b5f, roughness: 0.6 });
+const matRekaw = new THREE.MeshStandardMaterial({ color: 0xb3402f, roughness: 0.5 });
+
+// tulow (kapsula wzdluz lokalnej z) + glowa jako dziecko (obraca sie z tulowiem)
+const tulow = new THREE.Group();
+const tulowMesh = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.16, (W.tul_gora - W.tul_dol) - 0.1, 8, 16),
+  new THREE.MeshStandardMaterial({ color: 0x3a6ea5, roughness: 0.55 }));
+tulowMesh.rotation.x = Math.PI/2;   // kapsula wzdluz lokalnej z
+tulowMesh.castShadow = true;
+tulow.add(tulowMesh);
+const glowa = new THREE.Mesh(
+  new THREE.SphereGeometry(0.12, 20, 16), matCialo);
+glowa.position.set(0, 0, (W.tul_gora - W.tul_dol)/2 + 0.14);
+glowa.castShadow = true;
+tulow.add(glowa);
+swiat.add(tulow);
+
+// ramiona: kapsula wzdluz lokalnej x (obrot kapsuly Y->X)
+function czlonX(dlugosc, mat, promien) {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(
+    new THREE.CapsuleGeometry(promien, dlugosc - 2*promien, 6, 12), mat);
+  m.rotation.z = -Math.PI/2;   // kapsula wzdluz lokalnej x
+  m.castShadow = true;
+  g.add(m);
+  swiat.add(g);
+  return g;
+}
+const ra_g = czlonX(W.ramie, matCialo, 0.05);
+const ra_p = czlonX(W.przedramie, matRekaw, 0.055);
+const la_g = czlonX(W.ramie, matCialo, 0.05);
+const la_p = czlonX(W.przedramie, matRekaw, 0.055);
+
+// piesci (rekawice) na koncach przedramion
+function rekawica() {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.07, 16, 12),
+    new THREE.MeshStandardMaterial({ color: 0xd83a2a, roughness: 0.45 }));
+  s.castShadow = true; swiat.add(s); return s;
+}
+const piescR = rekawica(), piescL = rekawica();
+
+// nogi (pogladowe, nieruchoma postawa bokserska: lewa z przodu)
+function noga(x, y) {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.075, 0.72, 6, 12), matCialo);
+  m.rotation.x = Math.PI/2;   // wzdluz sim-z (pion)
+  m.castShadow = true;
+  g.add(m);
+  g.position.set(x, y, 0.45);   // od ~0.01 do ~0.88 (biodra pod pasem)
+  swiat.add(g);
+  // stopa
+  const stopa = new THREE.Mesh(
+    new THREE.BoxGeometry(0.22, 0.11, 0.05),
+    new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 }));
+  stopa.position.set(x + 0.04, y, 0.03);
+  stopa.castShadow = true;
+  swiat.add(stopa);
+  return g;
+}
+noga(0.16, 0.10);    // lewa (lead) z przodu
+noga(-0.16, -0.10);  // prawa (rear) z tylu
+
+// cien przeciwnika (translucentna sylwetka z przodu)
+const cien = new THREE.Group();
+const cienTul = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.17, 0.6, 6, 12),
+  new THREE.MeshStandardMaterial({ color: 0x05070a, transparent: true, opacity: 0.5 }));
+cienTul.rotation.x = Math.PI/2;
+cienTul.position.set(0, 0, 1.1);
+cien.add(cienTul);
+const cienGlowa = new THREE.Mesh(
+  new THREE.SphereGeometry(0.13, 16, 12),
+  new THREE.MeshStandardMaterial({ color: 0x05070a, transparent: true, opacity: 0.5 }));
+cienGlowa.position.set(0, 0, 1.5);
+cien.add(cienGlowa);
+cien.position.set(0.5, 0, 0);   // przed bokserem, na zasieg sierpowego (piesc dochodzi do ~0.40)
+swiat.add(cien);
+
+// os z symulacji: ustaw pozycje/orientacje czlonow
+const OSX = new THREE.Vector3(1, 0, 0);
+function ustawX(grupa, r, p, dlugosc) {
+  grupa.position.set(r[0], r[1], r[2]);
+  grupa.quaternion.set(p[1], p[2], p[3], p[0]);
+}
+function koniecX(r, p, dl) {
+  const q = new THREE.Quaternion(p[1], p[2], p[3], p[0]);
+  return new THREE.Vector3(...r).add(OSX.clone().applyQuaternion(q).multiplyScalar(dl/2));
+}
+
+// --- predkosc piesci (dla odczytu) ---
+const dt = DANE.dt;
+function predkoscR(nr) {
+  if (nr === 0) return 0;
+  const a = klatki[nr][I.ra_p], b = klatki[nr-1][I.ra_p];
+  const qa = new THREE.Quaternion(a.p[1],a.p[2],a.p[3],a.p[0]);
+  const pa = new THREE.Vector3(...a.r).add(OSX.clone().applyQuaternion(qa).multiplyScalar(W.przedramie/2));
+  const qb = new THREE.Quaternion(b.p[1],b.p[2],b.p[3],b.p[0]);
+  const pb = new THREE.Vector3(...b.r).add(OSX.clone().applyQuaternion(qb).multiplyScalar(W.przedramie/2));
+  return pa.distanceTo(pb)/dt;
+}
+
+const suwak = document.getElementById('suwak');
+suwak.max = klatki.length - 1;
+const przyciskGraj = document.getElementById('graj');
+const poleCzas = document.getElementById('czas');
+const poleV = document.getElementById('vmax');
+const wyborTempa = document.getElementById('tempo');
+const polePetla = document.getElementById('petla');
+let gra = true, klatka = 0, akumulator = 0;
+
+przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
+suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustawKlatke(klatka); };
+
+function ustawKlatke(nr) {
+  const kl = klatki[nr];
+  const t = kl[I.tulow];
+  tulow.position.set(...t.r);
+  tulow.quaternion.set(t.p[1], t.p[2], t.p[3], t.p[0]);
+
+  ustawX(ra_g, kl[I.ra_g].r, kl[I.ra_g].p, W.ramie);
+  ustawX(ra_p, kl[I.ra_p].r, kl[I.ra_p].p, W.przedramie);
+  ustawX(la_g, kl[I.la_g].r, kl[I.la_g].p, W.ramie);
+  ustawX(la_p, kl[I.la_p].r, kl[I.la_p].p, W.przedramie);
+  piescR.position.copy(koniecX(kl[I.ra_p].r, kl[I.ra_p].p, W.przedramie));
+  piescL.position.copy(koniecX(kl[I.la_p].r, kl[I.la_p].p, W.przedramie));
+
+  poleV.textContent = predkoscR(nr).toFixed(1) + ' m/s';
+  poleCzas.textContent = (nr * dt).toFixed(2) + ' s';
+  suwak.value = nr;
+}
+
+let poprzedni = performance.now();
+function petla(teraz) {
+  requestAnimationFrame(petla);
+  const dtReal = (teraz - poprzedni) / 1000;
+  poprzedni = teraz;
+  if (gra) {
+    akumulator += dtReal * (+wyborTempa.value);
+    while (akumulator >= dt) {
+      akumulator -= dt;
+      klatka += 1;
+      if (klatka >= klatki.length) klatka = polePetla.checked ? 0 : klatki.length - 1;
+    }
+    ustawKlatke(klatka);
+  }
+  kontrola.update();
+  renderer.render(scena, kamera);
+}
+ustawKlatke(0);
+requestAnimationFrame(petla);
+
+addEventListener('resize', () => {
+  kamera.aspect = innerWidth/innerHeight;
+  kamera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
