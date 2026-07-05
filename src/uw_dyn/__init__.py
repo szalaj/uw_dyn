@@ -28,7 +28,7 @@ from uw_dyn.wiezy import (
     Odleglosc,
     Kat,
 )
-from uw_dyn.sily import SilaWewnProst, SilaZewn
+from uw_dyn.sily import SilaWewnProst, SilaWPunkcie, SilaKontaktu, SilaZewn
 from uw_dyn.uklad import Uklad
 
 __all__ = [
@@ -36,7 +36,7 @@ __all__ = [
     "Polaczenie", "Para_Prostopadla", "Para_Prostopadla_D", "Para_Sferyczna",
     "Polaczenie_Obr", "Polaczenie_Cyl", "Polaczenie_Przes",
     "Odleglosc", "Kat",
-    "SilaWewnProst", "SilaZewn",
+    "SilaWewnProst", "SilaWPunkcie", "SilaKontaktu", "SilaZewn",
     "wektor", "wektor_p", "r_i", "dr_i", "p_i", "dp_i",
     "u2p", "EA_to_EP", "R", "G", "dG", "skew",
 ]

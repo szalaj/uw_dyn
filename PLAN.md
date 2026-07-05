@@ -14,6 +14,22 @@ logistyka to ujęcie makro, a uw_dyn to mikro-fizyka. Przykład transportowy
 (`transport_teren.py`) został usunięty; gdyby kiedyś był potrzebny, jest
 w historii gita (commit 68dc92d).
 
+## Trzy przykłady kanoniczne (decyzja z 2026-07-05)
+
+Bibliotekę rozbudowujemy, testujemy i weryfikujemy na trzech przykładach:
+
+1. **Przysiad** (`przyklady/przysiad.py`): biomechanika, mięśnie
+   sprężysto-tłumiące, równowaga statyczna, stateczność.
+2. **Robot kroczący** (`przyklady/robot_kroczacy.py`, rozwijany w stronę
+   mini-pieska czworonożnego): zmiany więzów w locie, uderzenia,
+   sterowanie chodem, kontakt z podłożem.
+3. **Kwadrokopter** (`przyklady/dron.py`): siły ciągu w układzie ciała,
+   regulator dyskretny (PD po segmentach), ładunek podwieszony.
+
+Każde nowe rozszerzenie biblioteki powinno być umotywowane potrzebą któregoś
+z tych przykładów i pokryte testami; przykłady służą też jako testy
+weryfikacyjne całości (fizyka + stabilność numeryczna + wizualizacja).
+
 ## Decyzje architektoniczne (ustalone z Marcinem)
 
 1. **Póki co robimy wszystko w Pythonie** (decyzja z 2026-07-05): rozwój

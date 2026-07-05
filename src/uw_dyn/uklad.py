@@ -656,8 +656,8 @@ class Uklad:
         return E
 
     def energia_potencjalna(self, y):
-        """Energia potencjalna: grawitacja (gdy wlaczona) + sprezyny
-        elementow SilaWewnProst (czlon tlumika i sily stalej pominiety)."""
+        """Energia potencjalna: grawitacja (gdy wlaczona) + energia
+        sprezysta sil wewnetrznych (tlumiki i sily stale pominiete)."""
         N = self.N
         y = np.asarray(y, dtype=float)
         q = y[0:7*N]
@@ -666,9 +666,7 @@ class Uklad:
             for cz in self.czlony:
                 E += cz.m*GRAWITACJA*float(q[3*(cz.i-1)+2])
         for s in self.silyWewn:
-            if s.k != 0:
-                l = s.dlugosc(q, N)
-                E += 0.5*s.k*(l - s.l0)**2
+            E += s.energia_potencjalna(q, N)
         return E
 
     def energia(self, y):
