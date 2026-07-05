@@ -86,4 +86,4 @@ Testy walidacyjne sprawdzają fizykę względem rozwiązań analitycznych:
 
 ## Kierunek rozwoju
 
-Zobacz `PLAN.md`: docelowo rdzeń obliczeniowy w Rust (PyO3 dla Pythona, WASM dla przeglądarki) oraz interaktywna wizualizacja web (Three.js). Wersja Python pozostaje implementacją wzorcową.
+Zobacz `PLAN.md`. W skrócie: całość rozwijana w Pythonie (fizyka, testy, optymalizacja, wizualizacja web z Three.js). Port rdzenia do Rust (PyO3, WASM) jest przewidziany warunkowo, tylko gdyby wydajność wersji Python przestała wystarczać w realnych zastosowaniach.

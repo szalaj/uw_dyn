@@ -6,7 +6,7 @@ Wskazówki dla Claude Code przy pracy z tym repozytorium.
 
 Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibody dynamics), wywodząca się z pracy magisterskiej (2016, Marcin Szalajski). Orientacja członów opisana parametrami Eulera (kwaternionami), równania ruchu z mnożnikami Lagrange'a, stabilizacja więzów metodą Baumgarte'a.
 
-**Najpierw przeczytaj `PLAN.md`**: tam jest mapa drogowa, podjęte decyzje architektoniczne (docelowo rdzeń w Rust + PyO3 + WASM, wizualizacja web w Three.js) i aktualny stan prac.
+**Najpierw przeczytaj `PLAN.md`**: tam jest mapa drogowa, podjęte decyzje architektoniczne i aktualny stan prac. Najważniejsza decyzja: rozwijamy wszystko w Pythonie; port do Rust jest warunkowy i wchodzi w grę dopiero, gdyby wydajności nie dało się uratować optymalizacją.
 
 ## Struktura
 

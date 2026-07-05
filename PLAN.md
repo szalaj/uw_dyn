@@ -11,14 +11,17 @@ oraz z wizualizacją w przeglądarce.
 
 ## Decyzje architektoniczne (ustalone z Marcinem)
 
-1. **Python zostaje jako implementacja wzorcowa**: źródło prawdy do walidacji,
-   łatwe eksperymentowanie. Najpierw dopracowujemy wersję Python.
-2. **Docelowy rdzeń w Rust** (`nalgebra`), wystawiony:
+1. **Póki co robimy wszystko w Pythonie** (decyzja z 2026-07-05): rozwój
+   fizyki, API, testów i optymalizacji zostaje w wersji Python. To ona jest
+   produktem i biblioteką używaną w innych projektach.
+2. **Rust tylko warunkowo**: gdyby wydajność wersji Python przestała
+   wystarczać w realnych zastosowaniach (mimo optymalizacji z kroku 3),
+   przenosimy rdzeń do Rust (`nalgebra`), wystawiony:
    - dla Pythona przez PyO3 + maturin (pakiet instalowalny przez uv/pip),
    - dla przeglądarki przez WebAssembly (wasm-bindgen).
+   Wtedy wersja Python zostaje implementacją wzorcową do testów zgodności.
 3. **Wizualizacja: web + Three.js** jako podstawa (interaktywna, na żywo);
    Blender opcjonalnie do renderów (scena `przyklady/lancuch.blend`).
-4. Testy zgodności wynik po wyniku między wersją Python a Rust.
 
 ## Mapa drogowa
 
@@ -44,24 +47,28 @@ oraz z wizualizacją w przeglądarce.
       `Odleglosc`, `Kat`, `SilaZewn`, sprężyna/tłumik w `SilaWewnProst`
 - [ ] Sensowne API wysokopoziomowe (np. budowa łańcucha helperem) i docstringi
 
-### Krok 3: wydajność wersji Python [OPCJONALNE]
+### Krok 3: wydajność wersji Python [DO ZROBIENIA, gdy zajdzie potrzeba]
 
 - [ ] Profilowanie (`cProfile`); wąskim gardłem jest narzut Pythona przy
       budowie małych macierzy, nie algebra (macierz układu dla N=4 to ~52x52)
 - [ ] Wektoryzacja składania macierzy (prealokacja zamiast `np.concatenate`)
+- [ ] Ewentualnie numba dla gorących ścieżek
 
-### Krok 4: port rdzenia do Rust [DO ZROBIENIA]
+### Krok 4: wizualizacja [DO ZROBIENIA]
+
+- [ ] Strona z Three.js: animacja z wyników symulacji (CSV/JSON),
+      suwaki parametrów; symulacja liczona w Pythonie
+- [ ] Opcjonalnie: skrypt importu CSV do Blendera (`przyklady/lancuch.blend`)
+
+### Krok 5: port rdzenia do Rust [WARUNKOWY: tylko gdy performance siada]
+
+Uruchamiamy dopiero, gdy krok 3 nie wystarczy w realnym zastosowaniu.
 
 - [ ] Crate `uw_dyn` (nalgebra), struktura kodu odwzorowująca wersję Python
 - [ ] Bindingi PyO3 + maturin, to samo API co pakiet Python
 - [ ] Testy zgodności: te same wejścia, porównanie trajektorii z wersją Python
 - [ ] Benchmarki (kryterium sukcesu: co najmniej 100x szybciej niż Python)
-
-### Krok 5: web + wizualizacja [DO ZROBIENIA]
-
-- [ ] Kompilacja rdzenia Rust do WASM (wasm-bindgen)
-- [ ] Strona z Three.js: animacja łańcucha na żywo, suwaki parametrów
-- [ ] Opcjonalnie: skrypt importu CSV do Blendera (`przyklady/lancuch.blend`)
+- [ ] Kompilacja do WASM (wasm-bindgen), podpięcie pod wizualizację z kroku 4
 
 ## Stan techniczny (na 2026-07-05)
 
