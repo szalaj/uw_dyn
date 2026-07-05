@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uw_dyn: kwadrokopter z ladunkiem</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a;
+               font-family: system-ui, sans-serif; color: #e8e8e8; }
+  #scena { position: absolute; inset: 0; }
+  #panel { position: absolute; left: 12px; top: 12px; padding: 12px 16px;
+           background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+           border-radius: 10px; max-width: 340px; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  #panel p { font-size: 12px; margin: 4px 0; color: #9fb0c3; }
+  #cel { font-size: 18px; font-weight: 600; color: #6fc3ff; }
+  #sterowanie { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+                display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+                background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+                border-radius: 10px; }
+  button { background: #2563eb; border: 0; color: #fff; border-radius: 6px;
+           padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  input[type=range] { width: 260px; }
+  select { background: #1b2330; color: #e8e8e8; border: 1px solid #2a3442;
+           border-radius: 6px; padding: 4px; }
+  #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 60px; }
+</style>
+</head>
+<body>
+<div id="scena"></div>
+<div id="panel">
+  <h1>Kwadrokopter z ładunkiem podwieszonym</h1>
+  <p>Dron (ciągi 4 wirników jako siły w układzie ciała) niesie ładunek na
+     linie, która luźna nie działa. Regulator kaskadowy PD taktowany
+     100 Hz, jak w prawdziwym kontrolerze lotu. Ładunek startuje z ziemi
+     (kontakt penalty) i buja się jak wahadło.</p>
+  <p>Punkt misji: <span id="cel">1/3</span></p>
+  <p>Mysz: obracanie, kółko: przybliżenie.</p>
+</div>
+<div id="sterowanie">
+  <button id="graj">⏸ pauza</button>
+  <input type="range" id="suwak" min="0" value="0" step="1">
+  <span id="czas">0.00 s</span>
+  <select id="tempo">
+    <option value="0.25">0.25x</option>
+    <option value="0.5">0.5x</option>
+    <option value="1" selected>1x</option>
+  </select>
+  <label style="font-size:12px"><input type="checkbox" id="petla" checked> pętla</label>
+</div>
+
+<script src="dane_dron.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const klatki = DANE.klatki;
+const RAMIE = DANE.ramie;
+
+const scena = new THREE.Scene();
+scena.background = new THREE.Color(0x10141a);
+scena.fog = new THREE.Fog(0x10141a, 10, 30);
+
+const kamera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 100);
+kamera.position.set(-2.5, 2.2, 3.5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('scena').appendChild(renderer.domElement);
+
+const kontrola = new OrbitControls(kamera, renderer.domElement);
+kontrola.enableDamping = true;
+
+scena.add(new THREE.HemisphereLight(0xbcd4ff, 0x30281e, 0.9));
+const slonce = new THREE.DirectionalLight(0xffffff, 1.6);
+slonce.position.set(4, 8, 3);
+slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+slonce.shadow.camera.left = -8; slonce.shadow.camera.right = 8;
+slonce.shadow.camera.top = 8; slonce.shadow.camera.bottom = -8;
+scena.add(slonce);
+
+const podloga = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 12),
+  new THREE.MeshStandardMaterial({ color: 0x1b2330, roughness: 0.95 }));
+podloga.rotation.x = -Math.PI/2;
+podloga.receiveShadow = true;
+podloga.position.x = 3;
+scena.add(podloga);
+const siatka = new THREE.GridHelper(30, 60, 0x2f3d50, 0x232d3c);
+siatka.position.set(3, 0.001, 0);
+scena.add(siatka);
+
+// grupa: os z symulacji -> os y three.js
+const swiat = new THREE.Group();
+swiat.rotation.x = -Math.PI/2;
+scena.add(swiat);
+
+// dron: korpus + 4 ramiona + wirniki
+const dron = new THREE.Group();
+const korpus = new THREE.Mesh(
+  new THREE.BoxGeometry(0.14, 0.14, 0.06),
+  new THREE.MeshStandardMaterial({ color: 0xe0e4ea, roughness: 0.5 }));
+korpus.castShadow = true;
+dron.add(korpus);
+const smiglo = [];
+for (const [dx, dy] of [[RAMIE,0], [-RAMIE,0], [0,RAMIE], [0,-RAMIE]]) {
+  const ramie = new THREE.Mesh(
+    new THREE.BoxGeometry(dx ? 2*RAMIE : 0.03, dy ? 2*RAMIE : 0.03, 0.02),
+    new THREE.MeshStandardMaterial({ color: 0x556274, roughness: 0.6 }));
+  ramie.position.set(dx/2, dy/2, 0);
+  ramie.castShadow = true;
+  if (dx || dy) dron.add(ramie);
+  const dysk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.09, 0.09, 0.012, 24),
+    new THREE.MeshStandardMaterial({ color: 0x4f8edb, roughness: 0.4,
+                                     transparent: true, opacity: 0.85 }));
+  dysk.rotation.x = Math.PI/2;   // dysk w plaszczyznie xy (sim)
+  dysk.position.set(dx, dy, 0.03);
+  dysk.castShadow = true;
+  dron.add(dysk);
+  smiglo.push(dysk);
+}
+swiat.add(dron);
+
+// ladunek + lina
+const ladunek = new THREE.Mesh(
+  new THREE.SphereGeometry(0.09, 20, 14),
+  new THREE.MeshStandardMaterial({ color: 0xf0a832, roughness: 0.5 }));
+ladunek.castShadow = true;
+swiat.add(ladunek);
+
+const geoLiny = new THREE.BufferGeometry().setFromPoints(
+  [new THREE.Vector3(), new THREE.Vector3()]);
+const lina = new THREE.Line(geoLiny,
+  new THREE.LineBasicMaterial({ color: 0xcccccc, transparent: true, opacity: 0.8 }));
+swiat.add(lina);
+
+// punkty misji
+for (const [mx, my, mz] of DANE.misja) {
+  const marker = new THREE.Mesh(
+    new THREE.SphereGeometry(0.06, 12, 10),
+    new THREE.MeshBasicMaterial({ color: 0x6fc3ff, transparent: true, opacity: 0.6 }));
+  marker.position.set(mx, my, mz);
+  swiat.add(marker);
+}
+
+// slad lotu
+const sladPunkty = [];
+const sladGeo = new THREE.BufferGeometry();
+const slad = new THREE.Line(sladGeo,
+  new THREE.LineBasicMaterial({ color: 0x4f8edb, transparent: true, opacity: 0.5 }));
+swiat.add(slad);
+
+// --- animacja ---
+const suwak = document.getElementById('suwak');
+suwak.max = klatki.length - 1;
+const przyciskGraj = document.getElementById('graj');
+const poleCzas = document.getElementById('czas');
+const poleCel = document.getElementById('cel');
+const wyborTempa = document.getElementById('tempo');
+const polePetla = document.getElementById('petla');
+let gra = true, klatka = 0, akumulator = 0, obrotSmigla = 0;
+
+przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
+suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustawKlatke(klatka); };
+
+function ustawKlatke(nr) {
+  const kl = klatki[nr];
+  dron.position.set(...kl.dron_r);
+  dron.quaternion.set(kl.dron_p[1], kl.dron_p[2], kl.dron_p[3], kl.dron_p[0]);
+  ladunek.position.set(...kl.lad_r);
+
+  const poz = lina.geometry.attributes.position;
+  poz.setXYZ(0, kl.dron_r[0], kl.dron_r[1], kl.dron_r[2] - 0.05);
+  poz.setXYZ(1, ...kl.lad_r);
+  poz.needsUpdate = true;
+
+  // slad do biezacej klatki
+  sladGeo.setFromPoints(klatki.slice(0, nr + 1).map(k => new THREE.Vector3(...k.dron_r)));
+
+  poleCel.textContent = `${Math.min(kl.cel + 1, DANE.misja.length)}/${DANE.misja.length}`;
+  poleCzas.textContent = (nr * DANE.dt).toFixed(2) + ' s';
+  suwak.value = nr;
+  kontrola.target.lerp(new THREE.Vector3(kl.dron_r[0], kl.dron_r[2] - 0.5, -kl.dron_r[1]), 0.06);
+}
+
+let poprzedni = performance.now();
+function petla(teraz) {
+  requestAnimationFrame(petla);
+  const dtReal = (teraz - poprzedni) / 1000;
+  poprzedni = teraz;
+  obrotSmigla += dtReal * 40;
+  for (const d of smiglo) d.rotation.y = obrotSmigla;
+  if (gra) {
+    akumulator += dtReal * (+wyborTempa.value);
+    while (akumulator >= DANE.dt) {
+      akumulator -= DANE.dt;
+      klatka += 1;
+      if (klatka >= klatki.length) klatka = polePetla.checked ? 0 : klatki.length - 1;
+    }
+    ustawKlatke(klatka);
+  }
+  kontrola.update();
+  renderer.render(scena, kamera);
+}
+ustawKlatke(0);
+requestAnimationFrame(petla);
+
+addEventListener('resize', () => {
+  kamera.aspect = innerWidth/innerHeight;
+  kamera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
