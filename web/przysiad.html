@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uw_dyn: staw kolanowy podczas przysiadu</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a;
+               font-family: system-ui, sans-serif; color: #e8e8e8; }
+  #scena { position: absolute; inset: 0; }
+  #panel { position: absolute; left: 12px; top: 12px; padding: 12px 16px;
+           background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+           border-radius: 10px; max-width: 320px; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  #panel p { font-size: 12px; margin: 4px 0; color: #9fb0c3; }
+  #kolano { font-size: 22px; font-weight: 600; color: #ff6b6b; }
+  #sterowanie { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+                display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+                background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+                border-radius: 10px; }
+  button { background: #2563eb; border: 0; color: #fff; border-radius: 6px;
+           padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  button:hover { background: #1d4ed8; }
+  input[type=range] { width: 260px; }
+  select { background: #1b2330; color: #e8e8e8; border: 1px solid #2a3442;
+           border-radius: 6px; padding: 4px; }
+  #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 60px; }
+</style>
+</head>
+<body>
+<div id="scena"></div>
+<div id="panel">
+  <h1>Staw kolanowy podczas przysiadu</h1>
+  <p>Model wieloczłonowy (uw_dyn): podudzie, udo i tułów połączone
+     przegubami obrotowymi. Mięśnie jako elementy sprężysto-tłumiące
+     ściągają postać ze stania do przysiadu.</p>
+  <p>Zgięcie kolana: <span id="kolano">0°</span></p>
+  <p>Mysz: obracanie, kółko: przybliżenie.</p>
+</div>
+<div id="sterowanie">
+  <button id="graj">⏸ pauza</button>
+  <input type="range" id="suwak" min="0" value="0" step="1">
+  <span id="czas">0.00 s</span>
+  <select id="tempo">
+    <option value="0.25">0.25x</option>
+    <option value="0.5">0.5x</option>
+    <option value="1" selected>1x</option>
+  </select>
+  <label style="font-size:12px"><input type="checkbox" id="pingpong" checked> tam i z powrotem</label>
+</div>
+
+<script src="dane_przysiad.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const [L1, L2, L3] = DANE.dlugosci;
+const klatki = DANE.klatki;
+
+// --- scena ---
+const scena = new THREE.Scene();
+scena.background = new THREE.Color(0x10141a);
+scena.fog = new THREE.Fog(0x10141a, 6, 14);
+
+const kamera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 100);
+kamera.position.set(2.6, 1.4, 2.2);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('scena').appendChild(renderer.domElement);
+
+const kontrola = new OrbitControls(kamera, renderer.domElement);
+kontrola.target.set(0, 0.7, 0);
+kontrola.enableDamping = true;
+
+scena.add(new THREE.HemisphereLight(0xbcd4ff, 0x30281e, 0.9));
+const slonce = new THREE.DirectionalLight(0xffffff, 1.6);
+slonce.position.set(3, 6, 2);
+slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+slonce.shadow.camera.left = -3; slonce.shadow.camera.right = 3;
+slonce.shadow.camera.top = 3; slonce.shadow.camera.bottom = -3;
+scena.add(slonce);
+
+// podloga
+const podloga = new THREE.Mesh(
+  new THREE.CircleGeometry(6, 48),
+  new THREE.MeshStandardMaterial({ color: 0x1b2330, roughness: 0.95 }));
+podloga.rotation.x = -Math.PI/2;
+podloga.receiveShadow = true;
+scena.add(podloga);
+const siatka = new THREE.GridHelper(6, 24, 0x2f3d50, 0x232d3c);
+siatka.position.y = 0.001;
+scena.add(siatka);
+
+// grupa w konwencji symulacji (os z do gory) -> three.js (os y do gory)
+const swiat = new THREE.Group();
+swiat.rotation.x = -Math.PI/2;
+scena.add(swiat);
+
+// --- czlony ---
+function segment(dlugosc, grubosc, kolor) {
+  const g = new THREE.Group();
+  const m = new THREE.Mesh(
+    new THREE.CapsuleGeometry(grubosc, dlugosc - 2*grubosc, 8, 20),
+    new THREE.MeshStandardMaterial({ color: kolor, roughness: 0.55 }));
+  m.rotation.x = Math.PI/2;   // kapsula wzdluz lokalnej osi z (jak w symulacji)
+  m.castShadow = true;
+  g.add(m);
+  return g;
+}
+
+const podudzie = segment(L1, 0.055, 0x4f8edb);
+const udo      = segment(L2, 0.075, 0x4f8edb);
+const tulow    = segment(L3, 0.13,  0x6fa8dc);
+swiat.add(podudzie, udo, tulow);
+const czlony = [podudzie, udo, tulow];
+
+// glowa na szczycie tulowia
+const glowa = new THREE.Mesh(
+  new THREE.SphereGeometry(0.11, 24, 18),
+  new THREE.MeshStandardMaterial({ color: 0xd9b38c, roughness: 0.6 }));
+glowa.castShadow = true;
+tulow.add(glowa);
+glowa.position.set(0, 0, L3/2 + 0.13);
+
+// stopa (nieruchoma, symbolicznie)
+const stopa = new THREE.Mesh(
+  new THREE.BoxGeometry(0.32, 0.10, 0.05),
+  new THREE.MeshStandardMaterial({ color: 0x37475c, roughness: 0.8 }));
+stopa.castShadow = true;
+stopa.position.set(0.07, 0, 0.012);
+swiat.add(stopa);
+
+// stawy: skokowy, kolanowy (wyrozniony), biodrowy
+function kulka(promien, kolor) {
+  const s = new THREE.Mesh(new THREE.SphereGeometry(promien, 20, 14),
+    new THREE.MeshStandardMaterial({ color: kolor, roughness: 0.4 }));
+  s.castShadow = true;
+  swiat.add(s);
+  return s;
+}
+const stawSkokowy = kulka(0.045, 0xcccccc);
+const stawKolanowy = kulka(0.075, 0xff5252);   // bohater przykladu
+const stawBiodrowy = kulka(0.06, 0xcccccc);
+
+// miesnie jako linie (podloze-podudzie, podudzie-udo, udo-tulow)
+const matMiesnia = new THREE.LineBasicMaterial({ color: 0xff8a65, transparent: true, opacity: 0.85 });
+const miesnie = [];
+for (let i = 0; i < 3; i++) {
+  const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+  const linia = new THREE.Line(geo, matMiesnia);
+  swiat.add(linia);
+  miesnie.push(linia);
+}
+const zaczepMiesniaGruntu = new THREE.Vector3(-0.35, 0, 0);
+
+// --- animacja ---
+const suwak = document.getElementById('suwak');
+suwak.max = klatki.length - 1;
+const przyciskGraj = document.getElementById('graj');
+const poleCzas = document.getElementById('czas');
+const poleKolano = document.getElementById('kolano');
+const wyborTempa = document.getElementById('tempo');
+const polePingpong = document.getElementById('pingpong');
+
+let gra = true, klatka = 0, kierunek = 1, akumulator = 0;
+
+przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
+suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustawKlatke(klatka); };
+
+function katY(p) { return 2 * Math.atan2(p[2], p[0]); }
+
+function ustawKlatke(nr) {
+  const kl = klatki[nr];
+  for (let i = 0; i < 3; i++) {
+    const { r, p } = kl[i];
+    czlony[i].position.set(r[0], r[1], r[2]);
+    czlony[i].quaternion.set(p[1], p[2], p[3], p[0]); // (e1,e2,e3,e0)
+  }
+  // stawy na koncach segmentow
+  const os = new THREE.Vector3(0, 0, 1);
+  const q1 = czlony[0].quaternion, q2 = czlony[1].quaternion;
+  const r1 = czlony[0].position, r2 = czlony[1].position, r3 = czlony[2].position;
+  stawSkokowy.position.copy(r1).addScaledVector(os.clone().applyQuaternion(q1), -L1/2);
+  stawKolanowy.position.copy(r1).addScaledVector(os.clone().applyQuaternion(q1), L1/2);
+  stawBiodrowy.position.copy(r2).addScaledVector(os.clone().applyQuaternion(q2), L2/2);
+
+  // miesnie: grunt->podudzie, podudzie->udo, udo->tulow (srodki czlonow)
+  const konce = [[zaczepMiesniaGruntu, r1], [r1, r2], [r2, r3]];
+  for (let i = 0; i < 3; i++) {
+    const poz = miesnie[i].geometry.attributes.position;
+    poz.setXYZ(0, konce[i][0].x, konce[i][0].y, konce[i][0].z);
+    poz.setXYZ(1, konce[i][1].x, konce[i][1].y, konce[i][1].z);
+    poz.needsUpdate = true;
+  }
+
+  // zgiecie kolana z kwaternionow (obrot wokol y)
+  const t1 = katY(kl[0].p), t2 = katY(kl[1].p);
+  poleKolano.textContent = ((t1 - t2) * 180 / Math.PI).toFixed(0) + '°';
+  poleCzas.textContent = (nr * DANE.dt).toFixed(2) + ' s';
+  suwak.value = nr;
+}
+
+let poprzedni = performance.now();
+function petla(teraz) {
+  requestAnimationFrame(petla);
+  const dtReal = (teraz - poprzedni) / 1000;
+  poprzedni = teraz;
+
+  if (gra) {
+    akumulator += dtReal * (+wyborTempa.value);
+    while (akumulator >= DANE.dt) {
+      akumulator -= DANE.dt;
+      klatka += kierunek;
+      if (klatka >= klatki.length - 1 || klatka <= 0) {
+        if (polePingpong.checked) { kierunek = -kierunek; klatka = Math.max(0, Math.min(klatka, klatki.length - 1)); }
+        else klatka = 0;
+      }
+    }
+    ustawKlatke(klatka);
+  }
+  kontrola.update();
+  renderer.render(scena, kamera);
+}
+ustawKlatke(0);
+requestAnimationFrame(petla);
+
+addEventListener('resize', () => {
+  kamera.aspect = innerWidth/innerHeight;
+  kamera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
