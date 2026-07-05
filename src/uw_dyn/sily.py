@@ -210,6 +210,88 @@ class SilaKontaktu:
         return Qr_i, Qp_i, Qr_j, Qp_j
 
 
+class MomentWzgledny:
+    """Aktuator obrotowy (sprezyna-tlumik) w przegubie miedzy czlonami i, j
+    wokol osi obrotu. Moment tau = k*(theta_cel - theta) - c*dtheta jest
+    przykladany +na czlon j oraz -na czlon i (para wewnetrzna).
+
+    axis, ref: os obrotu i wektor odniesienia (prostopadly do osi), oba
+    w ukladzie ciala; przy zbudowaniu ukladu czlony i, j maja byc ustawione
+    tak, ze przy theta=0 wektory ref obu czlonow sie pokrywaja. theta_cel
+    mozna zmieniac miedzy segmentami symulacji (sterowanie).
+
+    Dla i=0 (podstawa) os i ref sa w ukladzie globalnym."""
+
+    def __init__(self, i, j, axis, ref, k, theta_cel, c):
+        self.i = i
+        self.j = j
+        self.a = np.asarray(axis, dtype=float).reshape(3, 1)
+        self.a /= np.linalg.norm(self.a)
+        self.u = np.asarray(ref, dtype=float).reshape(3, 1)
+        self.u /= np.linalg.norm(self.u)
+        self.k = k
+        self.theta_cel = theta_cel
+        self.c = c
+
+    def energia_potencjalna(self, q, N):
+        if self.k == 0:
+            return 0.0
+        return 0.5*self.k*(self.kat(q, N) - self.theta_cel)**2
+
+    def _ramki(self, q, dq, N):
+        pj = p_i(self.j, q, N)
+        Rj = R(pj)
+        Gj = G(pj)
+        om_j = Rj.dot(2*Gj.dot(dp_i(self.j, dq, N)))  # predkosc katowa globalna
+        u_j = Rj.dot(self.u)
+        if self.i == 0:
+            a_g = self.a
+            u_i = self.u
+            om_i = np.zeros((3, 1))
+            Ri = Gi = None
+        else:
+            pi = p_i(self.i, q, N)
+            Ri = R(pi)
+            Gi = G(pi)
+            a_g = Ri.dot(self.a)
+            u_i = Ri.dot(self.u)
+            om_i = Ri.dot(2*Gi.dot(dp_i(self.i, dq, N)))
+        return Rj, Gj, om_j, u_j, a_g, u_i, om_i, Ri, Gi
+
+    def kat(self, q, N):
+        """Kat wzgledny theta czlonu j wobec i wokol osi obrotu."""
+        pj = p_i(self.j, q, N)
+        u_j = R(pj).dot(self.u)
+        if self.i == 0:
+            a_g, u_i = self.a, self.u
+        else:
+            Ri = R(p_i(self.i, q, N))
+            a_g, u_i = Ri.dot(self.a), Ri.dot(self.u)
+        sin_cz = float(np.cross(u_i.ravel(), u_j.ravel()).dot(a_g.ravel()))
+        cos_cz = float(u_i.ravel().dot(u_j.ravel()))
+        return np.arctan2(sin_cz, cos_cz)
+
+    def sila(self, q, dq, N):
+        Rj, Gj, om_j, u_j, a_g, u_i, om_i, Ri, Gi = self._ramki(q, dq, N)
+
+        sin_cz = float(np.cross(u_i.ravel(), u_j.ravel()).dot(a_g.ravel()))
+        cos_cz = float(u_i.ravel().dot(u_j.ravel()))
+        theta = np.arctan2(sin_cz, cos_cz)
+        dtheta = float(a_g.ravel().dot((om_j - om_i).ravel()))
+
+        tau = self.k*(self.theta_cel - theta) - self.c*dtheta
+        M = tau*a_g  # moment globalny na czlon j
+
+        Qr_i = np.zeros((3, 1))
+        Qr_j = np.zeros((3, 1))
+        Qp_j = 2*Gj.transpose().dot(Rj.transpose().dot(M))
+        if self.i == 0:
+            Qp_i = np.zeros((4, 1))
+        else:
+            Qp_i = -2*Gi.transpose().dot(Ri.transpose().dot(M))
+        return Qr_i, Qp_i, Qr_j, Qp_j
+
+
 class SilaZewn:
     """Sila (Fx/Fy/Fz) lub moment (nx/ny/nz) o stalej wielkosci dzialajacy na czlon."""
     def __init__(self,czlon, rodzaj, wielkosc):

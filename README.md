@@ -19,8 +19,10 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/lancuch02.py` | łańcuch czterech członów (wynik do CSV) |
 | `przyklady/przysiad.py` | staw kolanowy podczas przysiadu (mięśnie sprężysto-tłumiące) |
 | `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
+| `przyklady/piesek.py` | mini-piesek: czworonóg w chodzie pełzającym |
+| `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
-| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html` |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
@@ -36,7 +38,9 @@ uv run python przyklady/lancuch02.py   # przykładowa symulacja -> lancuch.csv
 # przykłady z wizualizacją web (Three.js, wymagany internet dla CDN):
 uv run python przyklady/przysiad.py         # generuje web/dane_przysiad.js
 uv run python przyklady/robot_kroczacy.py   # generuje web/dane_robot.js
-cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/przysiad.html
+uv run python przyklady/piesek.py           # generuje web/dane_piesek.js
+uv run python przyklady/dron.py             # generuje web/dane_dron.js
+cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/piesek.html
 ```
 
 Jako zależność w innym projekcie:
@@ -58,8 +62,11 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
   - `Para_Prostopadla`, `Para_Prostopadla_D`: więzy prostopadłości wektorów.
 - Więzy kierujące: `Odleglosc` (zadana odległość punktów) oraz `Kat` (zadany kąt między wektorami).
 - Siły:
-  - `SilaWewnProst`: element sprężysto-tłumiący z siłą stałą (sprężyna, tłumik, siłownik) między punktami dwóch członów,
-  - `SilaZewn`: siła lub moment zewnętrzny działający na wybrany człon,
+  - `SilaWewnProst`: element sprężysto-tłumiący z siłą stałą (sprężyna, tłumik, siłownik) między punktami dwóch członów; z `tylko_rozciaganie=True` działa jak lina,
+  - `SilaWPunkcie`: siła zadana w układzie ciała, zaczepiona w punkcie (np. ciąg wirnika drona, podąża za orientacją),
+  - `SilaKontaktu`: jednostronny kontakt punktu ciała z podłożem z=0 (model penalty ze sprężyną, tłumieniem i tarciem),
+  - `MomentWzgledny`: aktuator obrotowy w przegubie (sprężyna-tłumik dążący do zadanego kąta), do napędu stawów,
+  - `SilaZewn`: siła lub moment zewnętrzny w osiach globalnych działający na wybrany człon,
   - grawitacja włączana flagą `ukl.grawitacja = True`.
 
 ## Przykład użycia

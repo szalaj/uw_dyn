@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uw_dyn: mini-piesek (czworonog)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a;
+               font-family: system-ui, sans-serif; color: #e8e8e8; }
+  #scena { position: absolute; inset: 0; }
+  #panel { position: absolute; left: 12px; top: 12px; padding: 12px 16px;
+           background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+           border-radius: 10px; max-width: 340px; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  #panel p { font-size: 12px; margin: 4px 0; color: #9fb0c3; }
+  #dystans { font-size: 20px; font-weight: 600; color: #7bd88f; }
+  #sterowanie { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+                display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+                background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+                border-radius: 10px; }
+  button { background: #2563eb; border: 0; color: #fff; border-radius: 6px;
+           padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  input[type=range] { width: 240px; }
+  select { background: #1b2330; color: #e8e8e8; border: 1px solid #2a3442;
+           border-radius: 6px; padding: 4px; }
+  #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 60px; }
+</style>
+</head>
+<body>
+<div id="scena"></div>
+<div id="panel">
+  <h1>Mini-piesek (czworonóg)</h1>
+  <p>Tułów swobodny plus cztery dwuczłonowe nogi, przeguby obrotowe
+     w biodrach i kolanach napędzane aktuatorami momentu (sprężyna-tłumik).
+     Stopy dotykają podłoża przez kontakt penalty z tarciem. Chód pełzający:
+     jedna noga w wymachu, trzy podpierają.</p>
+  <p>Przebyta droga: <span id="dystans">0.00 m</span></p>
+  <p>Mysz: obracanie, kółko: przybliżenie.</p>
+</div>
+<div id="sterowanie">
+  <button id="graj">⏸ pauza</button>
+  <input type="range" id="suwak" min="0" value="0" step="1">
+  <span id="czas">0.00 s</span>
+  <select id="tempo">
+    <option value="0.25">0.25x</option>
+    <option value="0.5" selected>0.5x</option>
+    <option value="1">1x</option>
+  </select>
+  <label style="font-size:12px"><input type="checkbox" id="petla" checked> pętla</label>
+</div>
+
+<script src="dane_piesek.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const W = DANE.wymiary;
+const klatki = DANE.klatki;
+
+const scena = new THREE.Scene();
+scena.background = new THREE.Color(0x10141a);
+scena.fog = new THREE.Fog(0x10141a, 6, 20);
+
+const kamera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 100);
+kamera.position.set(-1.4, 1.0, 1.6);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('scena').appendChild(renderer.domElement);
+
+const kontrola = new OrbitControls(kamera, renderer.domElement);
+kontrola.enableDamping = true;
+
+scena.add(new THREE.HemisphereLight(0xbcd4ff, 0x30281e, 0.9));
+const slonce = new THREE.DirectionalLight(0xffffff, 1.6);
+slonce.position.set(3, 6, 2);
+slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+slonce.shadow.camera.left = -8; slonce.shadow.camera.right = 8;
+slonce.shadow.camera.top = 8; slonce.shadow.camera.bottom = -8;
+scena.add(slonce);
+
+const podloga = new THREE.Mesh(
+  new THREE.PlaneGeometry(30, 12),
+  new THREE.MeshStandardMaterial({ color: 0x1b2330, roughness: 0.95 }));
+podloga.rotation.x = -Math.PI/2;
+podloga.position.x = 4;
+podloga.receiveShadow = true;
+scena.add(podloga);
+const siatka = new THREE.GridHelper(30, 60, 0x2f3d50, 0x232d3c);
+siatka.position.set(4, 0.001, 0);
+scena.add(siatka);
+
+// grupa: os z symulacji -> os y three.js
+const swiat = new THREE.Group();
+swiat.rotation.x = -Math.PI/2;
+scena.add(swiat);
+
+// tulow
+const tulow = new THREE.Group();
+const pudlo = new THREE.Mesh(
+  new THREE.BoxGeometry(W.tulow, W.szer, 0.1),
+  new THREE.MeshStandardMaterial({ color: 0xc9772e, roughness: 0.6 }));
+pudlo.castShadow = true;
+tulow.add(pudlo);
+// glowa z przodu (+x)
+const glowa = new THREE.Mesh(
+  new THREE.SphereGeometry(0.07, 18, 14),
+  new THREE.MeshStandardMaterial({ color: 0xd9b38c, roughness: 0.6 }));
+glowa.position.set(W.tulow/2 + 0.05, 0, 0.05);
+glowa.castShadow = true;
+tulow.add(glowa);
+swiat.add(tulow);
+
+function segment(dlugosc) {
+  const m = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.028, dlugosc - 0.056, 6, 12),
+    new THREE.MeshStandardMaterial({ color: 0x4f8edb, roughness: 0.55 }));
+  m.rotation.x = Math.PI/2;   // wzdluz lokalnej osi z (jak w symulacji)
+  m.castShadow = true;
+  swiat.add(m);
+  return m;
+}
+
+// dla kazdej nogi: udo i podudzie + stopka
+const nogi = {};
+for (const noga of DANE.nogi) {
+  const udo = segment(W.udo);
+  const pod = segment(W.podudzie);
+  const stopa = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, 12, 10),
+    new THREE.MeshStandardMaterial({ color: 0x37475c, roughness: 0.7 }));
+  stopa.castShadow = true;
+  swiat.add(stopa);
+  nogi[noga] = { udo, pod, stopa };
+}
+
+// --- animacja ---
+const suwak = document.getElementById('suwak');
+suwak.max = klatki.length - 1;
+const przyciskGraj = document.getElementById('graj');
+const poleCzas = document.getElementById('czas');
+const poleDyst = document.getElementById('dystans');
+const wyborTempa = document.getElementById('tempo');
+const polePetla = document.getElementById('petla');
+let gra = true, klatka = 0, akumulator = 0, x0 = null;
+
+przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
+suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustawKlatke(klatka); };
+
+const osZ = new THREE.Vector3(0, 0, 1);
+function ustawSegment(mesh, r, p, dlugosc) {
+  mesh.position.set(r[0], r[1], r[2]);
+  mesh.quaternion.set(p[1], p[2], p[3], p[0]);
+}
+
+function ustawKlatke(nr) {
+  const kl = klatki[nr];
+  const t = kl[DANE.indeksy.tulow];
+  tulow.position.set(...t.r);
+  tulow.quaternion.set(t.p[1], t.p[2], t.p[3], t.p[0]);
+  if (x0 === null) x0 = t.r[0];
+
+  for (const noga of DANE.nogi) {
+    const [iu, ip] = DANE.indeksy[noga];
+    const cu = kl[iu], cp = kl[ip];
+    ustawSegment(nogi[noga].udo, cu.r, cu.p);
+    ustawSegment(nogi[noga].pod, cp.r, cp.p);
+    // stopa = dolny koniec podudzia
+    const q = new THREE.Quaternion(cp.p[1], cp.p[2], cp.p[3], cp.p[0]);
+    const stopaPoz = new THREE.Vector3(...cp.r)
+      .add(osZ.clone().applyQuaternion(q).multiplyScalar(-W.podudzie/2));
+    nogi[noga].stopa.position.copy(stopaPoz);
+  }
+
+  poleDyst.textContent = (t.r[0] - x0).toFixed(2) + ' m';
+  poleCzas.textContent = (nr * DANE.dt).toFixed(2) + ' s';
+  suwak.value = nr;
+  kontrola.target.lerp(new THREE.Vector3(t.r[0], t.r[2], -t.r[1]), 0.08);
+}
+
+let poprzedni = performance.now();
+function petla(teraz) {
+  requestAnimationFrame(petla);
+  const dtReal = (teraz - poprzedni) / 1000;
+  poprzedni = teraz;
+  if (gra) {
+    akumulator += dtReal * (+wyborTempa.value);
+    while (akumulator >= DANE.dt) {
+      akumulator -= DANE.dt;
+      klatka += 1;
+      if (klatka >= klatki.length) { klatka = polePetla.checked ? 0 : klatki.length - 1; x0 = null; }
+    }
+    ustawKlatke(klatka);
+  }
+  kontrola.update();
+  renderer.render(scena, kamera);
+}
+ustawKlatke(0);
+requestAnimationFrame(petla);
+
+addEventListener('resize', () => {
+  kamera.aspect = innerWidth/innerHeight;
+  kamera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>

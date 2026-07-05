@@ -13,14 +13,19 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 - `src/uw_dyn/algebra.py`: wektory, kwaterniony (parametry Eulera), macierze R/G, skew.
 - `src/uw_dyn/czlony.py`: `Czlon`.
 - `src/uw_dyn/wiezy.py`: pary kinematyczne (`Para_Sferyczna`, `Polaczenie_Obr`, `Polaczenie_Cyl`, `Polaczenie_Przes`, `Para_Prostopadla`, `Para_Prostopadla_D`) i więzy kierujące (`Odleglosc`, `Kat`).
-- `src/uw_dyn/sily.py`: `SilaWewnProst` (sprężyna/tłumik/siła stała), `SilaZewn`.
+- `src/uw_dyn/sily.py`: `SilaWewnProst` (sprężyna/tłumik/siła stała, opcja `tylko_rozciaganie` dla lin), `SilaWPunkcie` (siła w układzie ciała zaczepiona w punkcie, np. ciąg wirnika), `SilaKontaktu` (kontakt penalty z podłożem z=0, tarcie regularyzowane), `MomentWzgledny` (aktuator obrotowy w przegubie: sprężyna-tłumik z celem kątowym), `SilaZewn`.
 - `src/uw_dyn/uklad.py`: `Uklad` (składanie równań ruchu, symulacja `sym`/`sym2`, `newraph`, rzutowania `projekcja_polozen`/`projekcja_predkosci`, metody energii, `zapiszWyniki`).
 - `src/uw_dyn/dynamika.py`: alias zgodności wstecznej (re-eksport wszystkiego).
 - `src/uw_dyn/__init__.py`: publiczne API pakietu (jawna lista `__all__`).
 - `tests/`: pytest; `conftest.py` zawiera budowę wahadła testowego i obliczanie energii mechanicznej.
-- `przyklady/`: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`; `lancuch.blend` to scena Blendera.
-- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
+- `przyklady/`: `lancuch02.py` (CSV) i trzy przykłady kanoniczne: `przysiad.py`, `robot_kroczacy.py` (compass gait) → `piesek.py` (czworonóg), `dron.py` (kwadrokopter); `lancuch.blend` to scena Blendera.
+- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`, `piesek.html`, `dron.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
+- `docs/ULEPSZENIA.md`: research kierunków rozwoju biblioteki z priorytetami.
 - `docs/MSzalajski_mgr4.pdf`: praca magisterska; tu należy szukać teorii i oznaczeń.
+
+## Nowe siły (interfejs `sila(q, dq, N) -> (Qr_i, Qp_i, Qr_j, Qp_j)`)
+
+Każda siła wewnętrzna implementuje `sila(...)` oraz `energia_potencjalna(q, N)`. `SilaWPunkcie`, `SilaKontaktu` i `MomentWzgledny` ustawiają `i=0` i działają na człon `j` (jak siły „do podstawy"). Ich wektory (ciąg, cel kąta) można podmieniać między segmentami symulacji, co daje dyskretny sterownik (regulator drona, chód pieska) bez zmian w silniku.
 
 ## Uruchamianie
 

@@ -4,8 +4,8 @@
 import numpy as np
 import pytest
 
-from uw_dyn import (Uklad, Czlon, SilaWPunkcie, SilaKontaktu, SilaWewnProst,
-                    wektor, u2p)
+from uw_dyn import (Uklad, Czlon, Polaczenie_Obr, SilaWPunkcie, SilaKontaktu,
+                    SilaWewnProst, MomentWzgledny, wektor, u2p)
 from conftest import GRAWITACJA
 
 
@@ -80,6 +80,46 @@ def test_kontakt_tarcie_hamuje():
     assert ukl.Y[-1][7] < 0.2  # niemal zatrzymane
     # kierunek ruchu bez zmian (tarcie nie odwraca predkosci)
     assert ukl.Y[-1][7] > -1e-6
+
+
+@pytest.mark.parametrize("theta_cel", [0.3, -0.5, 0.8])
+def test_moment_wzgledny_osiaga_kat(theta_cel):
+    """Aktuator obrotowy w przegubie ustawia człon na zadanym kącie."""
+    ukl = Uklad()
+    ukl.dodajCzlon(Czlon(1, 1.0, np.diag([1., 1., 1.])))
+    ukl.dodajWiez(Polaczenie_Obr(0, 1, wektor(0, 0, 0), wektor(0, 0, 2),
+                                 wektor(1, 0, 0), wektor(0, 0, 1), wektor(0, 1, 0)))
+    ukl.dodajSileWewn(MomentWzgledny(0, 1, wektor(0, 1, 0), wektor(1, 0, 0),
+                                     k=50.0, theta_cel=theta_cel, c=15.0))
+    ukl.grawitacja = False
+    q0 = np.zeros(7)
+    q0[2] = -2
+    q0[3] = 1
+    ukl.sym2(np.concatenate((q0, np.zeros(7))), 0.0, 8.0, 0.005)
+    p = ukl.Y[-1][3:7]
+    assert 2 * np.arctan2(p[2], p[0]) == pytest.approx(theta_cel, abs=1e-3)
+
+
+def test_moment_wzgledny_para_wewnetrzna():
+    """Moment jest parą wewnętrzną: nie zmienia pędu ani nie działa dla i=0
+    poza swoim członem (zwięzły test bilansu na dwóch wolnych członach)."""
+    ukl = Uklad()
+    ukl.dodajCzlon(Czlon(1, 1.0, np.diag([1., 1., 1.])))
+    ukl.dodajCzlon(Czlon(2, 1.0, np.diag([1., 1., 1.])))
+    ukl.dodajWiez(Polaczenie_Obr(1, 2, wektor(0, 0, 1), wektor(0, 0, -1),
+                                 wektor(1, 0, 0), wektor(0, 0, 1), wektor(0, 1, 0)))
+    akt = MomentWzgledny(1, 2, wektor(0, 1, 0), wektor(1, 0, 0),
+                         k=10.0, theta_cel=0.6, c=2.0)
+    ukl.dodajSileWewn(akt)
+    ukl.grawitacja = False
+    q0 = np.zeros(14)
+    q0[2] = 1
+    q0[5] = -1
+    q0[6] = 1
+    q0[10] = 1
+    ukl.sym2(np.concatenate((q0, np.zeros(14))), 0.0, 6.0, 0.005)
+    # kąt względny człon2-człon1 dąży do celu
+    assert akt.kat(ukl.Y[-1][0:14], 2) == pytest.approx(0.6, abs=2e-2)
 
 
 def test_lina_luzna_nie_pcha():
