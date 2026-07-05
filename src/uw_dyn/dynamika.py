@@ -101,12 +101,13 @@ def dG(dp):
 # tworzenie z wektoru macierzy
 # skosno-symetrycznej
 def skew(a):
-    ax=float(np.asarray(a[0]).reshape(-1)[0])
-    ay=float(np.asarray(a[1]).reshape(-1)[0])
-    az=float(np.asarray(a[2]).reshape(-1)[0])
-    A = np.array([[0, -az, ay],
-    [az, 0, -ax],
-    [-ay, ax, 0]])
+    b = np.asarray(a).ravel()
+    ax = b[0]
+    ay = b[1]
+    az = b[2]
+    A = np.array([[0.0, -az, ay],
+    [az, 0.0, -ax],
+    [-ay, ax, 0.0]])
     return A
   
 # tworzenie wektoru pionowego r    
@@ -447,16 +448,14 @@ class Polaczenie_Obr(Para_Sferyczna):
         
     def jakobianK(self,q,N):
 
-        
         Fqi,Fqj = super().jakobianK(q,N)
-        
-        Fqi = np.append(Fqi, self.pp1.jakobianK(q,N)[0],0)
-        Fqi = np.append(Fqi, self.pp2.jakobianK(q,N)[0],0)
-        
-        Fqj = np.append(Fqj, self.pp1.jakobianK(q,N)[1],0)
-        Fqj = np.append(Fqj, self.pp2.jakobianK(q,N)[1],0)
-        
-        
+
+        J1i, J1j = self.pp1.jakobianK(q,N)
+        J2i, J2j = self.pp2.jakobianK(q,N)
+
+        Fqi = np.concatenate((Fqi, J1i, J2i), axis=0)
+        Fqj = np.concatenate((Fqj, J1j, J2j), axis=0)
+
         return Fqi, Fqj
         
     def gammaK(self,q,dq,N):
@@ -498,16 +497,21 @@ class Polaczenie_Cyl(Polaczenie):
         Fqi=np.zeros([4,7])
         Fqj=np.zeros([4,7])
 
-        Fqi[0,:]= self.p_prost1.jakobianK(q,N)[0]
-        Fqi[1,:]= self.p_prost2.jakobianK(q,N)[0]
-        Fqi[2,:]= self.p_prost_dij_1.jakobianK(q,N)[0]
-        Fqi[3,:]= self.p_prost_dij_2.jakobianK(q,N)[0]
-        
-        Fqj[0,:]= self.p_prost1.jakobianK(q,N)[1]
-        Fqj[1,:]= self.p_prost2.jakobianK(q,N)[1]
-        Fqj[2,:]= self.p_prost_dij_1.jakobianK(q,N)[1]
-        Fqj[3,:]= self.p_prost_dij_2.jakobianK(q,N)[1]     
-              
+        J1i, J1j = self.p_prost1.jakobianK(q,N)
+        J2i, J2j = self.p_prost2.jakobianK(q,N)
+        J3i, J3j = self.p_prost_dij_1.jakobianK(q,N)
+        J4i, J4j = self.p_prost_dij_2.jakobianK(q,N)
+
+        Fqi[0,:]= J1i
+        Fqi[1,:]= J2i
+        Fqi[2,:]= J3i
+        Fqi[3,:]= J4i
+
+        Fqj[0,:]= J1j
+        Fqj[1,:]= J2j
+        Fqj[2,:]= J3j
+        Fqj[3,:]= J4j
+
         return Fqi, Fqj
         
     def gammaK(self,q,dq,N):
@@ -542,9 +546,10 @@ class Polaczenie_Przes(Polaczenie_Cyl):
 
 
         Fqi,Fqj=super().jakobianK(q,N)
-        Fqi = np.append(Fqi, self.p_prost3.jakobianK(q,N)[0], 0)
-        Fqj = np.append(Fqj, self.p_prost3.jakobianK(q,N)[1], 0)   
-              
+        J5i, J5j = self.p_prost3.jakobianK(q,N)
+        Fqi = np.append(Fqi, J5i, 0)
+        Fqj = np.append(Fqj, J5j, 0)
+
         return Fqi, Fqj
         
     def gammaK(self,q,dq,N):
@@ -738,20 +743,29 @@ class Uklad:
         self.Mi = 0 #ilosc wiezow kierujacych (war.poczatkowe)
         self.Y = [] #wyniki symulacji
         self.grawitacja = True
-        
-        
+        # pamiec podreczna (przyspieszenie obliczen)
+        self._zbM = None      # macierz masowa (stala)
+        self._zbJ = None      # tensor bezwladnosci (staly)
+        self._jakK_klucz = None  # q, dla ktorego policzono jakobianK
+        self._jakK = None
+
+
     def dodajCzlon(self, czlon):
         #sprawdzenie czy 'czlon' jest typu Czlon
         if isinstance(czlon, Czlon):
             self.czlony.append(czlon)
             self.N += 1
+            self._zbM = None
+            self._zbJ = None
+            self._jakK_klucz = None
         else:
             raise Exception("Obiekt nie jest typu Czlon")
-            
+
     def dodajWiez(self, wiez):
         if isinstance(wiez, Polaczenie):
             self.wiezy_k.append(wiez)
             self.M += wiez.m
+            self._jakK_klucz = None
         else:
             raise Exception('Obiekt nie jest typu Polaczenie')
             
@@ -828,23 +842,31 @@ class Uklad:
         return F
         
     # jakobian wiezow kinematycznych zbiorczo
+    # (memoizacja: Lstrona i Pstrona pytaja o ten sam q w jednym kroku)
     def jakobianK(self, q):
-        
+
         M=self.M
         N=self.N
-        
+
+        klucz = q.tobytes() if isinstance(q, np.ndarray) else None
+        if klucz is not None and klucz == self._jakK_klucz:
+            return self._jakK
+
         Fq=np.zeros([M,7*N])
-        
+
         k=0
         for w in self.wiezy_k:
+            Fqi, Fqj = w.jakobianK(q,N)
             if w.i == 0:
-                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=w.jakobianK(q,N)[1]
+                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=Fqj
             else:
-                Fq[k:k+w.m, 7*(w.i-1):7*(w.i-1)+7]=w.jakobianK(q,N)[0]
-                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=w.jakobianK(q,N)[1]
+                Fq[k:k+w.m, 7*(w.i-1):7*(w.i-1)+7]=Fqi
+                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=Fqj
             k+=w.m
-        
-    
+
+        self._jakK_klucz = klucz
+        self._jakK = Fq
+
         return Fq
      
     # jakobian wiezow kierujacych zbiorczo
@@ -857,11 +879,12 @@ class Uklad:
         
         k=0
         for w in self.wiezy_d:
+            Fqi, Fqj = w.jakobianD(q,N)
             if w.i == 0:
-                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=w.jakobianD(q,N)[1]
+                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=Fqj
             else:
-                Fq[k:k+w.m, 7*(w.i-1):7*(w.i-1)+7]=w.jakobianD(q,N)[0]
-                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=w.jakobianD(q,N)[1]
+                Fq[k:k+w.m, 7*(w.i-1):7*(w.i-1)+7]=Fqi
+                Fq[k:k+w.m, 7*(w.j-1):7*(w.j-1)+7]=Fqj
             k+=w.m
         
     
@@ -925,90 +948,84 @@ class Uklad:
     
         return gammP
     
-    # macierz masowa zbiorczo   
+    # macierz masowa zbiorczo (stala; liczona raz)
     def zbiorczeM(self):
-        
-        czM =[]
-        for cz in self.czlony:
-            czM.append(cz.M())
-            
-        zbM = functools.reduce(scipy.linalg.block_diag, czM)
-        
-        return zbM
-        
-    # tensor bezwladnosci zbiorczo  
+
+        if self._zbM is None:
+            czM =[]
+            for cz in self.czlony:
+                czM.append(cz.M())
+            self._zbM = functools.reduce(scipy.linalg.block_diag, czM)
+
+        return self._zbM
+
+    # tensor bezwladnosci zbiorczo (staly; liczony raz)
     def zbiorczeJ(self):
-        
-        czJ =[]
-        for cz in self.czlony:
-            czJ.append(cz.J)
-            
-        zbJ = functools.reduce(scipy.linalg.block_diag, czJ)
-    
-        return zbJ
-    
-    # macierz G zbiorczo 
+
+        if self._zbJ is None:
+            czJ =[]
+            for cz in self.czlony:
+                czJ.append(cz.J)
+            self._zbJ = functools.reduce(scipy.linalg.block_diag, czJ)
+
+        return self._zbJ
+
+    # macierz G zbiorczo
     def zbiorczeG(self,q):
-        
+
         N = self.N
-        
-        czG = []
+
+        zbG = np.zeros([3*N, 4*N])
         for k in range(0,N):
             pi=q[3*N+4*k:3*N+4*k+4]
             pi = wektor_p(pi[0],pi[1],pi[2],pi[3])
-            #pi = p_i(k,q)
-            
-            czG.append(G(pi))
-            
-        zbG = functools.reduce(scipy.linalg.block_diag, czG)
-    
+            zbG[3*k:3*k+3, 4*k:4*k+4] = G(pi)
+
         return zbG
-        
-    # macierz dG zbiorczo     
+
+    # macierz dG zbiorczo
     def zbiorcze_dG(self,dq):
         N = self.N
-        czG = []
+
+        zbdG = np.zeros([3*N, 4*N])
         for k in range(0,N):
             dpi=dq[3*N+4*k:3*N+4*k+4]
             dpi = wektor_p(dpi[0],dpi[1],dpi[2],dpi[3])
-            #dpi=dp_i(k,dq)
-            czG.append(dG(dpi))
-            
-        zbdG = functools.reduce(scipy.linalg.block_diag, czG)
-    
+            zbdG[3*k:3*k+3, 4*k:4*k+4] = dG(dpi)
+
         return zbdG
         
 
+    # kolumny jakobianu odpowiadajace r (do wybierania podmacierzy)
+    def _kolumny_r(self):
+        return np.fromiter(jakobian_r_kolumny(self.N), dtype=int)
+
+    # kolumny jakobianu odpowiadajace p
+    def _kolumny_p(self):
+        return np.fromiter(jakobian_p_kolumny(self.N), dtype=int)
+
     # jakobianK polozen zbiorczo
     def zbiorczeF_r(self,q):
-        
-        kol = list(jakobian_p_kolumny(self.N))
-            
+
         F_q = self.jakobianK(q)
-        #usuniecie kolumn odpowiadajacych z p
-        F_r = np.delete(F_q, kol, 1)
-        #F_r = F_q[:,0:3]
+        #wybranie kolumn odpowiadajacych r
+        F_r = F_q[:, self._kolumny_r()]
         return F_r
-    
+
     # jakobianK par. eulera zbiorczo
     def zbiorczeF_p(self,q):
-        
 
-        kol = list(jakobian_r_kolumny(self.N))
-            
         F_q = self.jakobianK(q)
-        #usuniecie kolumn odpowiadajacych z r
-        F_p = np.delete(F_q, kol, 1)
+        #wybranie kolumn odpowiadajacych p
+        F_p = F_q[:, self._kolumny_p()]
         return F_p
-        
+
     # jakobianP par. eulera zbiorczo
     def zbiorczeFp_p(self,q):
-        
-        kol = list(jakobian_r_kolumny(self.N))
-            
+
         Fp = self.jakobianP(q)
-        #usuniecie kolumn odpowiadajacych z r
-        Fp_p = np.delete(Fp, kol, 1)
+        #wybranie kolumn odpowiadajacych p
+        Fp_p = Fp[:, self._kolumny_p()]
         return Fp_p
         
     # parametry eulera zbiorczo    
@@ -1041,16 +1058,19 @@ class Uklad:
         
         GT = G.transpose()
         Iloczyn = 4*GT.dot(J).dot(G)
-        
-        # wiersze duzej macierzy lewej strony 
-        Lstr1 = np.concatenate((zbM, np.zeros([3*N,4*N]), F_r.transpose(), np.zeros([3*N,N])), axis=1)
-        Lstr2 = np.concatenate((np.zeros([4*N,3*N]), Iloczyn, F_p.transpose(), Fp_p.transpose() ), axis=1)
-        Lstr3 = np.concatenate((F_r, F_p, np.zeros([M,M]), np.zeros([M,N])), axis=1)
-        Lstr4 = np.concatenate((np.zeros([N,3*N]), Fp_p, np.zeros([N,M]), np.zeros([N,N]) ), axis=1)
-        
-        # zlozenie duzej macierzy lewje strony
-        Lstr = np.concatenate((Lstr1, Lstr2, Lstr3, Lstr4), axis=0)
-    
+
+        # zlozenie duzej macierzy lewej strony (prealokacja blokow)
+        n = 7*N + M + N
+        Lstr = np.zeros([n, n])
+        Lstr[0:3*N, 0:3*N] = zbM
+        Lstr[0:3*N, 7*N:7*N+M] = F_r.transpose()
+        Lstr[3*N:7*N, 3*N:7*N] = Iloczyn
+        Lstr[3*N:7*N, 7*N:7*N+M] = F_p.transpose()
+        Lstr[3*N:7*N, 7*N+M:n] = Fp_p.transpose()
+        Lstr[7*N:7*N+M, 0:3*N] = F_r
+        Lstr[7*N:7*N+M, 3*N:7*N] = F_p
+        Lstr[7*N+M:n, 3*N:7*N] = Fp_p
+
         return Lstr
         
         
@@ -1115,24 +1135,9 @@ class Uklad:
         
         # zamiana kolejnosci wspolrzednych dopasowanych do jakobianu
         # q-> r1 r2 rn p1 p2 pn. bedzie r1 p1 r2 p2 rn pn
-        
-        dq_jak = []
-        
-        for k in range(0,N):
-            dri=dq[3*k:3*k+3]
-            
-            dq_jak.append(dri[0])
-            dq_jak.append(dri[1])
-            dq_jak.append(dri[2])
-            
-            dpi=dq[3*N+4*k:3*N+4*k+4]
-        
-            dq_jak.append(dpi[0])
-            dq_jak.append(dpi[1])
-            dq_jak.append(dpi[2])
-            dq_jak.append(dpi[3])
-        
-        dq_jak = np.array(dq_jak).reshape([-1,1])
+        dq_jak = np.concatenate((np.asarray(dq[0:3*N]).reshape(N,3),
+                                 np.asarray(dq[3*N:7*N]).reshape(N,4)),
+                                axis=1).reshape(-1,1)
 
 
         Ps = np.concatenate((self.gammaK(q,dq), self.gammaP(dq)), axis=0)

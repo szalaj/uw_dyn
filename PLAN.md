@@ -35,24 +35,35 @@ oraz z wizualizacją w przeglądarce.
       zachowanie energii, spełnienie więzów), regresja łańcucha 4 członów
 - [x] Przykład przeniesiony do `przyklady/`, praca magisterska do `docs/`
 
-### Krok 2: dopracowanie fizyki (wersja wzorcowa) [DO ZROBIENIA]
+### Krok 2: dopracowanie fizyki (wersja wzorcowa) [ZROBIONE, 2026-07-05]
 
-- [ ] Normalizacja kwaternionów po każdym kroku całkowania w `sym2`
-      (dziś norma dryfuje do ~0.996 przy dłuższych symulacjach)
-- [ ] Naprawa aliasowania: `sym2` modyfikuje `y0` w miejscu przez widoki
-      `q`/`dq` (testy obchodzą to przez `y0.copy()`)
-- [ ] Użycie/naprawa ścieżki `sym` (dopri5) lub przejście na `solve_ivp`;
-      porównanie dokładności z `sym2`
-- [ ] Testy dla pozostałych więzów: `Polaczenie_Cyl`, `Polaczenie_Przes`,
-      `Odleglosc`, `Kat`, `SilaZewn`, sprężyna/tłumik w `SilaWewnProst`
-- [ ] Sensowne API wysokopoziomowe (np. budowa łańcucha helperem) i docstringi
+- [x] Normalizacja kwaternionów po każdym kroku całkowania w `sym2`
+      (normy jednostkowe do 1e-12, wcześniej dryf do ~0.996)
+- [x] Naprawa aliasowania: `sym2` już nie modyfikuje `y0`
+- [x] `sym` przepisane z ode/dopri5 na `solve_ivp` (RK45, adaptacyjny);
+      test: okres wahadła z dokładnością 0.5%, dryf energii < 1e-4
+- [x] Naprawione błędy fizyki: prędkości kątowe w `gammaK` i `SilaWewnProst`
+      liczone jako `2*G(p)*p` (tożsamościowo zero!) zamiast `2*G(p)*dp`;
+      brakujące `ri`/`rj` w `Para_Prostopadla_D.jakobianK` (i != 0);
+      niezdefiniowane `Fqi` w `Kat.jakobianD` (i == 0)
+- [x] Testy pozostałych więzów i sił: `Polaczenie_Przes` (spadek swobodny
+      kontra wzór analityczny), `SilaZewn` (równowaga momentu), sprężyna
+      i tłumik (równowaga statyczna, częstość drgań), `Kat` i `Odleglosc`
+      (przez `newraph`), energia wahadła podwójnego (razem 25 testów)
+- [x] Docstringi klas
+- [ ] (przeniesione na później) API wysokopoziomowe, np. helper budowy łańcucha
 
-### Krok 3: wydajność wersji Python [DO ZROBIENIA, gdy zajdzie potrzeba]
+### Krok 3: wydajność wersji Python [ZROBIONE, 2026-07-05]
 
-- [ ] Profilowanie (`cProfile`); wąskim gardłem jest narzut Pythona przy
-      budowie małych macierzy, nie algebra (macierz układu dla N=4 to ~52x52)
-- [ ] Wektoryzacja składania macierzy (prealokacja zamiast `np.concatenate`)
-- [ ] Ewentualnie numba dla gorących ścieżek
+- [x] Profilowanie (`cProfile`): wąskie gardło to potrójne liczenie
+      `jakobianK` na krok i podwójne wywołania jakobianów w parach złożonych
+- [x] Optymalizacje (trajektoria bitowo identyczna z wersją przed zmianą):
+      memoizacja `jakobianK` per q, cache stałych macierzy masowych,
+      prealokacja bloków zamiast `reduce(block_diag)`/`np.concatenate`,
+      wybieranie kolumn zamiast `np.delete`, wektoryzacja `dq_jak`
+- [x] Wynik: łańcuch 4 członów z 4.85 do 1.65 ms/krok (3x szybciej)
+- [ ] (w razie potrzeby) numba lub głębsza wektoryzacja `gammaK`;
+      profil jest już rozproszony po faktycznej fizyce
 
 ### Krok 4: wizualizacja [DO ZROBIENIA]
 
@@ -70,13 +81,18 @@ Uruchamiamy dopiero, gdy krok 3 nie wystarczy w realnym zastosowaniu.
 - [ ] Benchmarki (kryterium sukcesu: co najmniej 100x szybciej niż Python)
 - [ ] Kompilacja do WASM (wasm-bindgen), podpięcie pod wizualizację z kroku 4
 
-## Stan techniczny (na 2026-07-05)
+## Stan techniczny (na 2026-07-05, po krokach 2 i 3)
 
-- Pakiet: `uv sync` + `uv run pytest` (15 testów przechodzi w ~6 s)
+- Pakiet: `uv sync` + `uv run pytest` (25 testów przechodzi w ~8 s)
 - Przykład: `uv run python przyklady/lancuch02.py` tworzy `lancuch.csv`
   (501 wierszy x 56 kolumn dla 4 członów; format: 3N pozycji, 4N parametrów
   Eulera, potem prędkości w tym samym porządku)
-- Znane słabości fizyki: półjawny Euler ze stałym krokiem w `sym2`,
-  dryf norm kwaternionów, stabilizacja Baumgarte'a z ręcznie dobieranymi
-  alfa/beta, macierz układu gęsta (koszt rośnie sześciennie z N)
+- Dwa integratory: `sym2` (półjawny Euler, stały krok, normalizacja
+  kwaternionów, szybki) i `sym` (solve_ivp RK45, adaptacyjny, dokładny;
+  dt określa tylko gęstość zapisu wyników)
+- Wydajność: łańcuch 4 członów ~1.65 ms/krok (po optymalizacji 3x)
+- Znane ograniczenia: stabilizacja Baumgarte'a z ręcznie dobieranymi
+  alfa/beta, macierz układu gęsta (koszt rośnie sześciennie z N),
+  więzy kierujące (`Kat`, `Odleglosc`) działają tylko w `newraph`
+  (warunki początkowe), nie w dynamice
 - Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf` (praca magisterska, 2016)

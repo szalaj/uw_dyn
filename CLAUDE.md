@@ -35,9 +35,10 @@ uv run python przyklady/lancuch02.py   # przykład
 
 ## Pułapki
 
-- `sym2` modyfikuje przekazany wektor `y0` w miejscu (aliasowane widoki `q`/`dq`); w testach przekazuj `y0.copy()`. Naprawa tego jest w planie (krok 2 w `PLAN.md`).
-- Normy kwaternionów dryfują (brak normalizacji po kroku całkowania); tolerancje w testach to uwzględniają.
 - Nowy NumPy nie pozwala na `float()` z macierzy (1,1): używaj `.item()`.
+- Więzy kierujące (`Kat`, `Odleglosc`, dodawane przez `dodajWiezD`) działają tylko w `newraph` (obliczanie warunków początkowych); w samej dynamice nie są egzekwowane.
+- `newraph` wymaga, żeby liczba więzów (kinematyczne + normy kwaternionów + kierujące) była równa `7*N`.
+- `Uklad.jakobianK` jest memoizowany po `q` (i unieważniany w `dodajCzlon`/`dodajWiez`); jeśli dodajesz nowe metody mutujące układ, unieważnij `self._jakK_klucz`.
 
 ## Uwagi
 
