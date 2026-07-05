@@ -9,12 +9,11 @@
 
 
 #uzyte moduly (biblioteki)
-from scipy.integrate import ode
+from scipy.integrate import solve_ivp
 import scipy.linalg
 import numpy as np
 from math import cos,sin,pi
 import functools
-import copy
 
 
 
@@ -120,6 +119,7 @@ def wektor_p(e0,e1,e2,e3):
     
         
 class Czlon:
+    """Czlon (bryla sztywna): numer, masa i tensor bezwladnosci w ukladzie ciala."""
     
     def __init__(self, numer, masa, tensor_bez):
         self.i = numer 
@@ -143,6 +143,7 @@ class Polaczenie:
 
         
 class Para_Prostopadla(Polaczenie):
+    """Wiez prostopadlosci wektorow ai (czlon i) i aj (czlon j): ai . R aj = 0."""
     
     def __init__(self, i, j, ai, aj):
         self.i = i
@@ -198,7 +199,7 @@ class Para_Prostopadla(Polaczenie):
         gamK=0
         
         Om_j_skew = 2*Gj.dot(dGj.transpose())
-        Om_j = 2*Gj.dot(pj)
+        Om_j = 2*Gj.dot(dpj)
           
         if self.i == 0:        
             pom = Om_j_skew.dot(Om_j_skew).dot(Rj.transpose())
@@ -210,7 +211,7 @@ class Para_Prostopadla(Polaczenie):
             dGi = dG(dpi)
             
             Om_i_skew = 2*Gi.dot(dGi.transpose())
-            Om_i = 2*Gi.dot(pi)
+            Om_i = 2*Gi.dot(dpi)
             
             Ri = R(pi)
             Rj = R(pj)
@@ -228,6 +229,7 @@ class Para_Prostopadla(Polaczenie):
         
 
 class Para_Prostopadla_D(Polaczenie):
+    """Wiez prostopadlosci wektora ai do wektora laczacego punkty A (czlon i) i B (czlon j)."""
     
     def __init__(self, i, j, sA_i, sB_j, ai):
         self.i = i
@@ -264,12 +266,14 @@ class Para_Prostopadla_D(Polaczenie):
         if self.i == 0:
             Fqj[0,0:3]= self.ai.transpose() 
             Fqj[0,3:7]= -2*self.ai.transpose().dot(Rj).dot(skew(self.sB_j)).dot(Gj)
-        else: 
+        else:
+            ri = r_i(self.i,q)
+            rj = r_i(self.j,q)
             pi=p_i(self.i,q,N)
             Ri=R(pi)
             Gi=G(pi)
-            
-            Fqi[0,0:3]= -self.ai.transpose().dot(Ri.transpose()) 
+
+            Fqi[0,0:3]= -self.ai.transpose().dot(Ri.transpose())
             dij = rj+Rj.dot(self.sB_j)-ri-Ri.dot(self.sA_i)
             pom = self.ai.transpose().dot(skew(self.sA_i))-dij.transpose().dot(Ri).dot(skew(self.ai))
             Fqi[0,3:7] = 2*pom.dot(Gi)     
@@ -291,7 +295,7 @@ class Para_Prostopadla_D(Polaczenie):
         gamK=0
         
         Om_j_skew = 2*Gj.dot(dGj.transpose())
-        Om_j = 2*Gj.dot(pj)
+        Om_j = 2*Gj.dot(dpj)
         
         
         if self.i == 0:        
@@ -313,17 +317,11 @@ class Para_Prostopadla_D(Polaczenie):
             dGi = dG(dpi)
             
             Om_i_skew = 2*Gi.dot(dGi.transpose())
-            Om_i = 2*Gi.dot(pi)
+            Om_i = 2*Gi.dot(dpi)
             
             Ri = R(pi)
             Rj = R(pj)
             
-            uj_skew = skew(uj)    
-            vi_skew = skew(vi)
-            wi_skew = skew(wi)
-            vj_skew = skew(vj)
-            
-       
             dij = rj + Rj.dot(self.sB_j) - ri - Ri.dot(self.sA_i)
             
             pom1 = 2*Om_i.transpose().dot(skew(self.ai)).dot(Ri.transpose()).dot(dri-drj)
@@ -338,6 +336,7 @@ class Para_Prostopadla_D(Polaczenie):
         
 
 class Para_Sferyczna(Polaczenie):
+    """Przegub kulisty: punkt A czlonu i pokrywa sie z punktem B czlonu j (3 wiezy)."""
     
     def __init__(self, i, j, sA_i, sB_j):
         self.i = i
@@ -398,7 +397,7 @@ class Para_Sferyczna(Polaczenie):
         gamK=np.zeros([3,1])
         
         Om_j_skew = 2*Gj.dot(dGj.transpose())
-        Om_j = 2*Gj.dot(pj)
+        Om_j = 2*Gj.dot(dpj)
     
         if self.i == 0:        
             
@@ -413,7 +412,7 @@ class Para_Sferyczna(Polaczenie):
             dGi = dG(dpi)
             
             Om_i_skew = 2*Gi.dot(dGi.transpose())
-            Om_i = 2*Gi.dot(pi)
+            Om_i = 2*Gi.dot(dpi)
             
             Ri = R(pi)
             Rj = R(pj)
@@ -428,6 +427,7 @@ class Para_Sferyczna(Polaczenie):
         return gamK  
         
 class Polaczenie_Obr(Para_Sferyczna):
+    """Przegub obrotowy: przegub kulisty + os obrotu (uj czlonu j prostopadle do vi i wi czlonu i); 5 wiezow."""
     
     def __init__(self, i, j, sA_i, sB_j, vi, wi, uj):
         super().__init__(i,j,sA_i,sB_j)
@@ -470,6 +470,7 @@ class Polaczenie_Obr(Para_Sferyczna):
      
   
 class Polaczenie_Cyl(Polaczenie):
+    """Para cylindryczna: translacja + obrot wzdluz wspolnej osi; 4 wiezy."""
     
     def __init__(self, i, j, sA_i, sB_j, vi, wi, uj):
         self.i = i
@@ -521,6 +522,7 @@ class Polaczenie_Cyl(Polaczenie):
         return gamK
         
 class Polaczenie_Przes(Polaczenie_Cyl):
+    """Para przesuwna (pryzmatyczna): jak cylindryczna, ale bez obrotu; 5 wiezow."""
     
     def __init__(self, i, j, sA_i, sB_j, vi, wi, vj, uj):
         
@@ -554,6 +556,7 @@ class Polaczenie_Przes(Polaczenie_Cyl):
         
         
 class Odleglosc(Para_Prostopadla_D):
+    """Wiez kierujacy: zadana odleglosc C punktu B czlonu j od punktu A czlonu i wzdluz kierunku ai (uzywany przez newraph)."""
 
     def __init__(self, i, j, sA_i, sB_j, ai, C):
         
@@ -573,6 +576,7 @@ class Odleglosc(Para_Prostopadla_D):
         return Fqi, Fqj
 
 class Kat(Polaczenie):
+    """Wiez kierujacy: zadany kat fi miedzy wektorem vi czlonu i a wektorem uj czlonu j (uzywany przez newraph)."""
     
     def __init__(self, i, j, vi, wi, uj,fi):
         self.i = i
@@ -604,9 +608,10 @@ class Kat(Polaczenie):
                 F = self.p_prost2.wiezyK(q,N) - np.cos(self.fi + np.pi/2)
         return F
     
-    # jakobian wiezow kierujacych pary    
+    # jakobian wiezow kierujacych pary
     def jakobianD(self,q,N):
-
+        Fqi = np.zeros([1,7])
+        Fqj = np.zeros([1,7])
         if self.i == 0:
             if np.fabs(np.cos(self.fi)) <= np.sqrt(2)*0.5:
                 Fqj= self.p_prost1.jakobianK(q,N)[1]
@@ -625,6 +630,7 @@ class Kat(Polaczenie):
 
 # klasa sily wewnetrznej w ukladzie
 class SilaWewnProst:
+    """Element sprezysto-tlumiacy z sila stala (sprezyna k o dlugosci swobodnej l0, tlumik c, sila F) miedzy punktem A czlonu i oraz punktem B czlonu j."""
     def __init__(self, i, j, sA_i, sB_j, k,l0, c, F):
             self.i = i
             self.j = j
@@ -640,10 +646,11 @@ class SilaWewnProst:
         drj = dr_i(self.j,dq)
         
         pj = p_i(self.j,q,N)
+        dpj = dp_i(self.j,dq,N)
         Rj = R(pj)
         Gj = G(pj)
 
-        om_j = 2*Gj.dot(pj)
+        om_j = 2*Gj.dot(dpj)
 
         Qr_i = np.zeros((3,1))
         Qp_i = np.zeros((4,1))         
@@ -669,11 +676,12 @@ class SilaWewnProst:
             dri = dr_i(self.i,dq)
             
             pi = p_i(self.i,q,N)
+            dpi = dp_i(self.i,dq,N)
             Ri = R(pi)
             Gi = G(pi)
-    
 
-            om_i = 2*Gi.dot(pi)            
+
+            om_i = 2*Gi.dot(dpi)
             
             dij = rj + Rj.dot(self.sB_j) - ri - Ri.dot(self.sA_i)
             l = np.sqrt( dij.transpose().dot(dij) )
@@ -695,6 +703,7 @@ class SilaWewnProst:
         
         
 class SilaZewn:
+    """Sila (Fx/Fy/Fz) lub moment (nx/ny/nz) o stalej wielkosci dzialajacy na czlon."""
     def __init__(self,czlon, rodzaj, wielkosc):
         self.czlon = czlon
         self.rodzaj = rodzaj
@@ -716,6 +725,7 @@ def jakobian_r_kolumny(N):
 
 
 class Uklad:
+    """Uklad wieloczlonowy: czlony, wiezy i sily oraz procedury symulacji (sym, sym2), rozwiazywania warunkow poczatkowych (newraph) i zapisu wynikow."""
 
     def __init__(self):
         self.czlony = []
@@ -1136,74 +1146,65 @@ class Uklad:
     
         return Pstr
             
-    # integracja metoda Newtona        
+    # integracja poljawnym schematem Eulera (symplektycznym) ze stalym krokiem
     def sym2(self, y0,t0,tK,dt, alfa, beta):
+        """Symulacja ukladu poljawnym schematem Eulera ze stalym krokiem dt.
+
+        y0 nie jest modyfikowane. Po kazdym kroku kwaterniony sa
+        normalizowane. Wyniki (wiersz na krok czasowy) w self.Y."""
         N = self.N
-        self.Y = []
         self.alfa = alfa
         self.beta = beta
-        y=y0         
-        self.Y.append(copy.copy(y))
-        
-        print('--trwa obliczanie symulacji--')
-        
+        y = np.array(y0, dtype=float).copy()
+        q = y[0:7*N]
+        dq = y[7*N:14*N]
+        wyniki = [y.copy()]
+
         for t in np.arange(t0,tK,dt):
-            #print("t",t)
-            q = y[0:7*N]
-            dq = y[7*N:14*N]
-            
-            
-            
             LS = self.Lstrona(q,dq)
             PS = self.Pstrona(q,dq)
-            #print(np.linalg.matrix_rank(LS))
             ddq = np.linalg.solve(LS, PS).ravel()
-            
 
-            
-            for i in range(0,7*N):
-                dq[i] += ddq[i]*dt
-                q[i] += dq[i]*dt
+            dq += ddq[0:7*N]*dt
+            q += dq*dt
 
-            for j in range(0,7*N):
-                y[j] = q[j]
-                y[7*N+j] = dq[j]
+            # normalizacja kwaternionow po kroku calkowania
+            for k in range(0,N):
+                p = q[3*N+4*k:3*N+4*k+4]
+                p /= np.linalg.norm(p)
 
-            self.Y.append(copy.copy(y))
-    
-        self.Y = np.array(self.Y)
-        
+            wyniki.append(y.copy())
 
-    # integracja funkcja 'ode' metoda 'dopri5'
-    def sym(self,y0,t0,tK,dt,alfa,beta):
+        self.Y = np.array(wyniki)
+
+
+    # integracja adaptacyjna (scipy solve_ivp, RK45)
+    def sym(self,y0,t0,tK,dt,alfa,beta, rtol=1e-8, atol=1e-8):
+        """Symulacja ukladu metoda adaptacyjna RK45 (scipy.solve_ivp).
+
+        Dokladniejsza (ale wolniejsza) niz sym2; dt okresla tylko gestosc
+        zapisu wynikow. y0 nie jest modyfikowane. Wyniki w self.Y."""
         N = self.N
-        self.Y = []
         self.alfa = alfa
         self.beta = beta
-        
-        def funode(t,y):
-            N = self.N
+
+        def prawa(t,y):
             q = y[0:7*N]
             dq = y[7*N:14*N]
-            
+
             LS = self.Lstrona(q,dq)
             PS = self.Pstrona(q,dq)
- 
-            ddq = np.linalg.solve(LS, PS).ravel()  
-            ddq = ddq[0:7*N]
 
-            ret = list(dq)+list(ddq)
-            return ret
+            ddq = np.linalg.solve(LS, PS).ravel()[0:7*N]
+            return np.concatenate((dq, ddq))
 
-        solver = ode(funode).set_integrator('dopri5')
-        solver.set_initial_value(y0, t0)
+        t_eval = np.arange(t0, tK+dt/2, dt)
+        roz = solve_ivp(prawa, (t0, tK), np.array(y0, dtype=float),
+                        t_eval=t_eval, method='RK45', rtol=rtol, atol=atol)
+        if not roz.success:
+            raise RuntimeError('sym: calkowanie nieudane: ' + roz.message)
 
-        while solver.successful() and solver.t < tK:
-            print(solver.t)
-            solver.integrate(solver.t+dt)
-            self.Y.append(solver.y)
-
-        self.Y = np.array(self.Y)
+        self.Y = roz.y.T.copy()
 
     # rozwiazanie nieliniowego ukladu rownan
     # metoda Newtona-Raphsona
