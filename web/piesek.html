@@ -121,13 +121,17 @@ tulow.add(glowa);
 swiat.add(tulow);
 
 function segment(dlugosc) {
+  // grupa dostaje kwaternion czlonu; kapsula-dziecko ma staly obrot
+  // wyrownujacy ja do lokalnej osi z (jak w przykladzie przysiad)
+  const g = new THREE.Group();
   const m = new THREE.Mesh(
     new THREE.CapsuleGeometry(0.028, dlugosc - 0.056, 6, 12),
     new THREE.MeshStandardMaterial({ color: 0x4f8edb, roughness: 0.55 }));
   m.rotation.x = Math.PI/2;   // wzdluz lokalnej osi z (jak w symulacji)
   m.castShadow = true;
-  swiat.add(m);
-  return m;
+  g.add(m);
+  swiat.add(g);
+  return g;
 }
 
 // dla kazdej nogi: udo i podudzie + stopka
