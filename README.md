@@ -19,9 +19,8 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/lancuch02.py` | łańcuch czterech członów (wynik do CSV) |
 | `przyklady/przysiad.py` | staw kolanowy podczas przysiadu (mięśnie sprężysto-tłumiące) |
 | `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
-| `przyklady/transport_teren.py` | koszt transportu po terenie (przykład dla projektu logistyka) |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
-| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `transport.html` |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
@@ -37,7 +36,6 @@ uv run python przyklady/lancuch02.py   # przykładowa symulacja -> lancuch.csv
 # przykłady z wizualizacją web (Three.js, wymagany internet dla CDN):
 uv run python przyklady/przysiad.py         # generuje web/dane_przysiad.js
 uv run python przyklady/robot_kroczacy.py   # generuje web/dane_robot.js
-uv run python przyklady/transport_teren.py  # generuje web/dane_transport.js
 cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/przysiad.html
 ```
 

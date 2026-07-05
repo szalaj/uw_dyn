@@ -18,8 +18,8 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 - `src/uw_dyn/dynamika.py`: alias zgodności wstecznej (re-eksport wszystkiego).
 - `src/uw_dyn/__init__.py`: publiczne API pakietu (jawna lista `__all__`).
 - `tests/`: pytest; `conftest.py` zawiera budowę wahadła testowego i obliczanie energii mechanicznej.
-- `przyklady/`: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`, `transport_teren.py` (przykład dla `~/repos/logistyka`); `lancuch.blend` to scena Blendera.
-- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`, `transport.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
+- `przyklady/`: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`; `lancuch.blend` to scena Blendera.
+- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
 - `docs/MSzalajski_mgr4.pdf`: praca magisterska; tu należy szukać teorii i oznaczeń.
 
 ## Uruchamianie

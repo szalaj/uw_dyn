@@ -6,8 +6,13 @@ Aktualizuj status po każdym istotnym kroku.
 ## Cel docelowy
 
 Szybka biblioteka do dynamiki 3D układów wieloczłonowych, używalna z Pythona
-(w projektach takich jak `~/repos/logistyka`, wzorzec: biblioteka `procenty`)
-oraz z wizualizacją w przeglądarce.
+jako zwykły pakiet (wzorzec: biblioteka `procenty`) oraz z wizualizacją
+w przeglądarce.
+
+Decyzja z 2026-07-05: NIE łączymy tego repo z projektem `~/repos/logistyka`;
+logistyka to ujęcie makro, a uw_dyn to mikro-fizyka. Przykład transportowy
+(`transport_teren.py`) został usunięty; gdyby kiedyś był potrzebny, jest
+w historii gita (commit 68dc92d).
 
 ## Decyzje architektoniczne (ustalone z Marcinem)
 
@@ -92,11 +97,6 @@ oraz z wizualizacją w przeglądarce.
       siłownik biodra ze stałymi momentami, tłumik między nogami; zmiana
       podpory = projekcja położeń + uderzenie plastyczne; 8 kroków, ~1.9 m.
       Parametry z przeszukiwania siatki (COM=0.8 przy biodrze kluczowe).
-- [x] `przyklady/transport_teren.py` + `web/transport.html`: przykład dla
-      projektu logistyka: pół-samochód na resorach jedzie po terenach
-      poziomów 0..3; paliwo ~ straty amortyzatorów + praca wspinaczki.
-      Wniosek: koszt rośnie NIELINIOWO (mnożniki ~1 / 5.5 / 16 / 37), gra
-      zaniża koszt gór przy liniowym `paliwo_za_wysokosc`.
 - [x] Strony web: Three.js z CDN (wymagają internetu); uruchamianie:
       `cd web && python3 -m http.server 8000` i otworzyć stronę
 - [ ] Opcjonalnie: skrypt importu CSV do Blendera (`przyklady/lancuch.blend`)
@@ -121,8 +121,8 @@ Uruchamiamy dopiero, gdy krok 3 nie wystarczy w realnym zastosowaniu.
   RK45, adaptacyjny; dt określa tylko gęstość zapisu wyników)
 - Nowe metody `Uklad`: `projekcja_polozen`, `projekcja_predkosci`
   (uderzenie plastyczne), `energia_kinetyczna/potencjalna/energia`
-- Przykłady: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`,
-  `transport_teren.py` (dla logistyki); wizualizacje w `web/*.html`
+- Przykłady: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`;
+  wizualizacje w `web/*.html`
   (Three.js z CDN; `cd web && python3 -m http.server 8000`)
 - Wydajność: łańcuch 4 członów ~1.65 ms/krok z Baumgarte,
   ~3.4 ms/krok z rzutowaniem (dokładne więzy)
