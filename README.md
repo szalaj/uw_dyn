@@ -14,12 +14,16 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 
 | Ścieżka | Opis |
 |------|------|
-| `src/uw_dyn/` | pakiet: klasy członów, więzów, sił oraz procedury symulacji |
-| `tests/` | testy pytest: algebra, walidacja fizyczna na wahadle, regresja łańcucha |
-| `przyklady/lancuch02.py` | przykład: łańcuch czterech członów połączonych przegubami obrotowymi |
+| `src/uw_dyn/` | pakiet: moduły `algebra`, `czlony`, `wiezy`, `sily`, `uklad` |
+| `tests/` | testy pytest: algebra, walidacja fizyczna, rzutowanie, energia |
+| `przyklady/lancuch02.py` | łańcuch czterech członów (wynik do CSV) |
+| `przyklady/przysiad.py` | staw kolanowy podczas przysiadu (mięśnie sprężysto-tłumiące) |
+| `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
+| `przyklady/transport_teren.py` | koszt transportu po terenie (przykład dla projektu logistyka) |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `transport.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
-| `PLAN.md` | mapa drogowa rozwoju (docelowo rdzeń w Rust + wizualizacja web) |
+| `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
 ## Instalacja i uruchomienie
 
@@ -29,6 +33,12 @@ Projekt używa [uv](https://docs.astral.sh/uv/):
 uv sync                                # instalacja pakietu i zależności
 uv run pytest                          # testy
 uv run python przyklady/lancuch02.py   # przykładowa symulacja -> lancuch.csv
+
+# przykłady z wizualizacją web (Three.js, wymagany internet dla CDN):
+uv run python przyklady/przysiad.py         # generuje web/dane_przysiad.js
+uv run python przyklady/robot_kroczacy.py   # generuje web/dane_robot.js
+uv run python przyklady/transport_teren.py  # generuje web/dane_transport.js
+cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/przysiad.html
 ```
 
 Jako zależność w innym projekcie:
@@ -39,7 +49,8 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
 
 ## Główne elementy pakietu
 
-- `Uklad`: klasa zbiorcza układu; metody `dodajCzlon`, `dodajWiez`, `dodajWiezD`, `dodajSileWewn`, `dodajSileZewn`, symulacja (`sym`, `sym2`), rozwiązywanie więzów metodą Newtona-Raphsona (`newraph`) oraz zapis wyników (`zapiszWyniki`).
+- `Uklad`: klasa zbiorcza układu; metody `dodajCzlon`, `dodajWiez`, `dodajWiezD`, `dodajSileWewn`, `dodajSileZewn`, symulacja (`sym`, `sym2`), rozwiązywanie więzów metodą Newtona-Raphsona (`newraph`), rzutowanie na więzy (`projekcja_polozen`, `projekcja_predkosci`, przydatne też jako uderzenie plastyczne przy zmianie więzów), energia mechaniczna (`energia`, `energia_kinetyczna`, `energia_potencjalna`) oraz zapis wyników (`zapiszWyniki`).
+- `sym2` domyślnie stabilizuje więzy rzutowaniem (dokładne więzy, bez strojenia); klasyczne Baumgarte przez `stabilizacja='baumgarte'` z parametrami `alfa`, `beta`.
 - `Czlon`: człon układu zdefiniowany masą i tensorem bezwładności.
 - Więzy kinematyczne (pary kinematyczne):
   - `Para_Sferyczna`: przegub kulisty,
@@ -68,7 +79,7 @@ ukl.grawitacja = True
 q0 = np.zeros(7); q0[2] = -2; q0[3] = 1
 y0 = np.concatenate((q0, np.zeros(7)))
 
-ukl.sym2(y0, t0=0, tK=50, dt=0.01, alfa=1, beta=1)
+ukl.sym2(y0, t0=0, tK=50, dt=0.01)
 ukl.zapiszWyniki('wyniki.csv')
 ```
 

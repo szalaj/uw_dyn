@@ -10,11 +10,16 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 
 ## Struktura
 
-- `src/uw_dyn/dynamika.py`: cały silnik obliczeniowy. Klasy: `Uklad` (układ zbiorczy, symulacja `sym`/`sym2`, Newton-Raphson `newraph`, zapis `zapiszWyniki`), `Czlon`, pary kinematyczne (`Para_Sferyczna`, `Polaczenie_Obr`, `Polaczenie_Cyl`, `Polaczenie_Przes`, `Para_Prostopadla`, `Para_Prostopadla_D`), więzy kierujące (`Odleglosc`, `Kat`), siły (`SilaWewnProst`, `SilaZewn`).
+- `src/uw_dyn/algebra.py`: wektory, kwaterniony (parametry Eulera), macierze R/G, skew.
+- `src/uw_dyn/czlony.py`: `Czlon`.
+- `src/uw_dyn/wiezy.py`: pary kinematyczne (`Para_Sferyczna`, `Polaczenie_Obr`, `Polaczenie_Cyl`, `Polaczenie_Przes`, `Para_Prostopadla`, `Para_Prostopadla_D`) i więzy kierujące (`Odleglosc`, `Kat`).
+- `src/uw_dyn/sily.py`: `SilaWewnProst` (sprężyna/tłumik/siła stała), `SilaZewn`.
+- `src/uw_dyn/uklad.py`: `Uklad` (składanie równań ruchu, symulacja `sym`/`sym2`, `newraph`, rzutowania `projekcja_polozen`/`projekcja_predkosci`, metody energii, `zapiszWyniki`).
+- `src/uw_dyn/dynamika.py`: alias zgodności wstecznej (re-eksport wszystkiego).
 - `src/uw_dyn/__init__.py`: publiczne API pakietu (jawna lista `__all__`).
 - `tests/`: pytest; `conftest.py` zawiera budowę wahadła testowego i obliczanie energii mechanicznej.
-- `przyklady/lancuch02.py`: przykładowa symulacja łańcucha czterech członów; wynik zapisywany do `lancuch.csv` (ignorowany przez git).
-- `przyklady/lancuch.blend`: scena Blendera do wizualizacji wyników.
+- `przyklady/`: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`, `transport_teren.py` (przykład dla `~/repos/logistyka`); `lancuch.blend` to scena Blendera.
+- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`, `transport.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
 - `docs/MSzalajski_mgr4.pdf`: praca magisterska; tu należy szukać teorii i oznaczeń.
 
 ## Uruchamianie
@@ -39,6 +44,9 @@ uv run python przyklady/lancuch02.py   # przykład
 - Więzy kierujące (`Kat`, `Odleglosc`, dodawane przez `dodajWiezD`) działają tylko w `newraph` (obliczanie warunków początkowych); w samej dynamice nie są egzekwowane.
 - `newraph` wymaga, żeby liczba więzów (kinematyczne + normy kwaternionów + kierujące) była równa `7*N`.
 - `Uklad.jakobianK` jest memoizowany po `q` (i unieważniany w `dodajCzlon`/`dodajWiez`); jeśli dodajesz nowe metody mutujące układ, unieważnij `self._jakK_klucz`.
+- Jakobiany więzów są dokładne tylko dla kwaternionów jednostkowych (macierz `R(p)` jest kwadratowa w `p`). Każda iteracja Newtona po `q` musi normalizować kwaterniony, inaczej poprawki „odbijają" i mogą dywergować; `projekcja_polozen` już to robi.
+- `sym2` z domyślnym rzutowaniem wymaga `dt` w granicach stabilności półjawnego Eulera; za duży krok kończy się `RuntimeError` z komunikatem (Baumgarte przy grubym kroku przeżywa, ale kosztem naruszenia więzów).
+- `SilaZewn` w `Pstrona` nadpisuje (nie sumuje) wartość dla danego członu i kierunku: dwie siły `ny` na ten sam człon nie zadziałają łącznie.
 
 ## Uwagi
 

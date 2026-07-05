@@ -65,10 +65,40 @@ oraz z wizualizacją w przeglądarce.
 - [ ] (w razie potrzeby) numba lub głębsza wektoryzacja `gammaK`;
       profil jest już rozproszony po faktycznej fizyce
 
-### Krok 4: wizualizacja [DO ZROBIENIA]
+### Krok 3.5: restrukturyzacja i nowe metody numeryczne [ZROBIONE, 2026-07-05]
 
-- [ ] Strona z Three.js: animacja z wyników symulacji (CSV/JSON),
-      suwaki parametrów; symulacja liczona w Pythonie
+- [x] Podział monolitu na moduły: `algebra`, `czlony`, `wiezy`, `sily`,
+      `uklad` (`uw_dyn.dynamika` został jako alias zgodności)
+- [x] Stabilizacja więzów rzutowaniem (nowa domyślna w `sym2`):
+      `projekcja_polozen` (Newton z kontrolą kroku; kwaterniony
+      normalizowane przed iteracją, bo jakobiany są dokładne tylko dla
+      kwaternionów jednostkowych) oraz `projekcja_predkosci` (rzutowanie
+      w metryce macierzy mas, czyli uderzenie plastyczne). Baumgarte
+      dostępne przez `stabilizacja='baumgarte'`.
+- [x] Wykrywanie rozbiegania symulacji z czytelnym komunikatem
+      (rzutowanie wymaga dt w granicach stabilności integratora;
+      przykład łańcucha przeszedł z dt=0.1 na dt=0.02)
+- [x] Metody energii: `energia_kinetyczna`, `energia_potencjalna`
+      (grawitacja + sprężyny), `energia`; nowa metoda `SilaWewnProst.dlugosc`
+- [x] Testy rzutowania i energii (razem 30 testów)
+
+### Krok 4: wizualizacja i przykłady [ZROBIONE w wersji podstawowej, 2026-07-05]
+
+- [x] `przyklady/przysiad.py` + `web/przysiad.html`: staw kolanowy podczas
+      przysiadu (3 człony, mięśnie sprężysto-tłumiące, długości swobodne
+      z równowagi statycznej, kontrola stateczności hesjanem energii)
+- [x] `przyklady/robot_kroczacy.py` + `web/robot.html`: najprostszy robot
+      kroczący (chód cyrklowy): noga podporowa przypinana przegubem,
+      siłownik biodra ze stałymi momentami, tłumik między nogami; zmiana
+      podpory = projekcja położeń + uderzenie plastyczne; 8 kroków, ~1.9 m.
+      Parametry z przeszukiwania siatki (COM=0.8 przy biodrze kluczowe).
+- [x] `przyklady/transport_teren.py` + `web/transport.html`: przykład dla
+      projektu logistyka: pół-samochód na resorach jedzie po terenach
+      poziomów 0..3; paliwo ~ straty amortyzatorów + praca wspinaczki.
+      Wniosek: koszt rośnie NIELINIOWO (mnożniki ~1 / 5.5 / 16 / 37), gra
+      zaniża koszt gór przy liniowym `paliwo_za_wysokosc`.
+- [x] Strony web: Three.js z CDN (wymagają internetu); uruchamianie:
+      `cd web && python3 -m http.server 8000` i otworzyć stronę
 - [ ] Opcjonalnie: skrypt importu CSV do Blendera (`przyklady/lancuch.blend`)
 
 ### Krok 5: port rdzenia do Rust [WARUNKOWY: tylko gdy performance siada]
@@ -81,18 +111,27 @@ Uruchamiamy dopiero, gdy krok 3 nie wystarczy w realnym zastosowaniu.
 - [ ] Benchmarki (kryterium sukcesu: co najmniej 100x szybciej niż Python)
 - [ ] Kompilacja do WASM (wasm-bindgen), podpięcie pod wizualizację z kroku 4
 
-## Stan techniczny (na 2026-07-05, po krokach 2 i 3)
+## Stan techniczny (na 2026-07-05, po krokach 1-4)
 
-- Pakiet: `uv sync` + `uv run pytest` (25 testów przechodzi w ~8 s)
-- Przykład: `uv run python przyklady/lancuch02.py` tworzy `lancuch.csv`
-  (501 wierszy x 56 kolumn dla 4 członów; format: 3N pozycji, 4N parametrów
-  Eulera, potem prędkości w tym samym porządku)
-- Dwa integratory: `sym2` (półjawny Euler, stały krok, normalizacja
-  kwaternionów, szybki) i `sym` (solve_ivp RK45, adaptacyjny, dokładny;
-  dt określa tylko gęstość zapisu wyników)
-- Wydajność: łańcuch 4 członów ~1.65 ms/krok (po optymalizacji 3x)
-- Znane ograniczenia: stabilizacja Baumgarte'a z ręcznie dobieranymi
-  alfa/beta, macierz układu gęsta (koszt rośnie sześciennie z N),
-  więzy kierujące (`Kat`, `Odleglosc`) działają tylko w `newraph`
-  (warunki początkowe), nie w dynamice
+- Pakiet: `uv sync` + `uv run pytest` (30 testów przechodzi w ~12 s)
+- Moduły: `uw_dyn.algebra` (wektory, kwaterniony, macierze), `uw_dyn.czlony`,
+  `uw_dyn.wiezy`, `uw_dyn.sily`, `uw_dyn.uklad`; `uw_dyn.dynamika` to alias
+- Dwa integratory: `sym2` (półjawny Euler, stały krok; domyślnie
+  stabilizacja rzutowaniem, opcjonalnie Baumgarte) i `sym` (solve_ivp
+  RK45, adaptacyjny; dt określa tylko gęstość zapisu wyników)
+- Nowe metody `Uklad`: `projekcja_polozen`, `projekcja_predkosci`
+  (uderzenie plastyczne), `energia_kinetyczna/potencjalna/energia`
+- Przykłady: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`,
+  `transport_teren.py` (dla logistyki); wizualizacje w `web/*.html`
+  (Three.js z CDN; `cd web && python3 -m http.server 8000`)
+- Wydajność: łańcuch 4 członów ~1.65 ms/krok z Baumgarte,
+  ~3.4 ms/krok z rzutowaniem (dokładne więzy)
+- Znane ograniczenia: macierz układu gęsta (koszt rośnie sześciennie
+  z N), więzy kierujące (`Kat`, `Odleglosc`) działają tylko w `newraph`
+  (warunki początkowe), nie w dynamice; rzutowanie wymaga dt w granicach
+  stabilności półjawnego Eulera (za duży krok kończy się czytelnym
+  RuntimeError, wtedy zmniejszyć dt)
+- Ważna subtelność: jakobiany więzów są dokładne tylko dla kwaternionów
+  jednostkowych; wszelkie poprawki Newtona muszą normalizować kwaterniony
+  (zrobione w `projekcja_polozen`)
 - Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf` (praca magisterska, 2016)
