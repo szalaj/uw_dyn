@@ -9,6 +9,13 @@ Szybka biblioteka do dynamiki 3D układów wieloczłonowych, używalna z Pythona
 jako zwykły pakiet (wzorzec: biblioteka `procenty`) oraz z wizualizacją
 w przeglądarce.
 
+**Cel długoterminowy (decyzja z 2026-07-06): symulacja dynamiki sportów walki
+człowieka, w szczególności kickboxingu, za pomocą uw_dyn.** Przykład `bokser.py`
+(prawy sierpowy na cień) to pierwszy krok w tym kierunku. Docelowo: wiarygodny
+model biomechaniczny zawodnika, ciosy i kopnięcia, praca nóg, garda, a w dalszej
+perspektywie interakcja dwóch zawodników (trafienia, bloki). Dedykowana mapa
+drogowa tego kierunku jest w sekcji „Kierunek: dynamika sportów walki" poniżej.
+
 Decyzja z 2026-07-05: NIE łączymy tego repo z projektem `~/repos/logistyka`;
 logistyka to ujęcie makro, a uw_dyn to mikro-fizyka. Przykład transportowy
 (`transport_teren.py`) został usunięty; gdyby kiedyś był potrzebny, jest
@@ -163,6 +170,63 @@ Uruchamiamy dopiero, gdy krok 3 nie wystarczy w realnym zastosowaniu.
 - [ ] Testy zgodności: te same wejścia, porównanie trajektorii z wersją Python
 - [ ] Benchmarki (kryterium sukcesu: co najmniej 100x szybciej niż Python)
 - [ ] Kompilacja do WASM (wasm-bindgen), podpięcie pod wizualizację z kroku 4
+
+## Kierunek: dynamika sportów walki (kickboxing) [PLAN, 2026-07-06]
+
+Docelowe zastosowanie biblioteki: symulacja biomechaniki zawodnika sportów
+walki. `bokser.py` (prawy sierpowy na cień) to punkt wyjścia. Poniżej mapa
+drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
+
+### Etap A: solidny model człowieka (biomechanika)
+
+- [ ] Pełna sylwetka jako łańcuch członów: miednica, tułów (1–2 segmenty),
+      głowa, ramiona (bark+łokieć, docelowo +nadgarstek), nogi (biodro+kolano
+      +kostka). Masy i tensory bezwładności z tablic antropometrycznych
+      (np. de Leva / Winter), skalowane wzrostem i masą zawodnika.
+- [ ] Realistyczne stawy 3D. Kluczowe ograniczenie obecnej biblioteki:
+      `Polaczenie_Obr` to 1 stopień swobody. Bark i biodro są kuliste (3 DOF),
+      a łokieć/kolano zawiasowe (1 DOF). ROZWIĄZANIE: albo złożyć staw kulisty
+      z 2–3 przegubów obrotowych w serii z drobnym członem pośrednim, albo
+      dodać do biblioteki napędzany staw kulisty (`Para_Sferyczna` + aktuator
+      3-osiowy). To warunkuje naturalne pozy (garda z łokciami w dół), których
+      `bokser.py` nie ma (model płaszczyzny poziomej — patrz jego opis).
+- [ ] Limity zakresu ruchu w stawach (miękkie ograniczniki: jednostronna
+      sprężyna-tłumik przy przekroczeniu kąta granicznego).
+- [ ] Model „mięśni/napędów" stawów: aktuator momentu z ograniczeniem
+      maksymalnego momentu (nie liniowa sprężyna bez limitu), żeby siły ciosów
+      były fizycznie sensowne.
+
+### Etap B: sterowanie ruchem zawodnika
+
+- [ ] Biblioteka gotowych ruchów jako trajektorie kątów stawów w czasie
+      (jab, cross, hak, podbródkowy, kopnięcia: front/round/side), parametryzowane
+      tempem i siłą. Wzorzec z `bokser.py`: sekwencja garda → cios → powrót,
+      cele kątowe modulowane fazą (dyskretny sterownik co segment).
+- [ ] Utrzymanie równowagi na nogach z kontaktem stóp (`SilaKontaktu`) —
+      to najtrudniejsze; open-loop się przewraca (jak chód pieska). Potrzebny
+      regulator postawy (środek masy nad wielobokiem podparcia) i/lub praca nóg.
+- [ ] Praca nóg: krok, unik, zejście z linii — na bazie kontaktu i przenoszenia
+      ciężaru.
+
+### Etap C: interakcja i pomiary
+
+- [ ] Trafienie: kontakt pięści/stopy z celem (workiem, tarczą, przeciwnikiem)
+      przez `SilaKontaktu`/`SilaWPunkcie`; pomiar siły i pędu uderzenia.
+- [ ] Metryki ciosu: prędkość i energia pięści w chwili kontaktu, impuls,
+      moment obrotowy przenoszony na cel. Częściowo już liczone w `bokser.py`
+      (prędkość pięści).
+- [ ] Dwaj zawodnicy: dwa modele w jednym `Uklad`, wzajemne trafienia i bloki.
+
+### Potrzebne rozszerzenia biblioteki (wynikają z etapów A–C)
+
+- napędzany staw kulisty (3 DOF) — Etap A, najważniejsze;
+- ograniczniki zakresu ruchu — Etap A;
+- aktuator momentu z limitem — Etap A/B;
+- kontakt bryła–bryła (nie tylko punkt–podłoże) do trafień — Etap C;
+- regulator postawy/balansu — Etap B (najtrudniejsze numerycznie).
+
+Powiązane: te rozszerzenia częściowo pokrywają się z listą w `docs/ULEPSZENIA.md`
+(np. integrator dla sztywnych sprężyn, wykrywanie zdarzeń dla momentu kontaktu).
 
 ## Stan techniczny (na 2026-07-05, po krokach 1-4)
 
