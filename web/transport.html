@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uw_dyn: koszt transportu po terenie</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a;
+               font-family: system-ui, sans-serif; color: #e8e8e8; }
+  #scena { position: absolute; inset: 0; }
+  #panel { position: absolute; left: 12px; top: 12px; padding: 12px 16px;
+           background: rgba(16,20,26,.85); border: 1px solid #2a3442;
+           border-radius: 10px; max-width: 360px; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  #panel p { font-size: 12px; margin: 4px 0; color: #9fb0c3; }
+  table { font-size: 12px; border-collapse: collapse; margin-top: 6px; }
+  th, td { padding: 3px 8px; border-bottom: 1px solid #2a3442; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  #sterowanie { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+                display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+                background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+                border-radius: 10px; }
+  button { background: #2563eb; border: 0; color: #fff; border-radius: 6px;
+           padding: 6px 14px; font-size: 13px; cursor: pointer; }
+  input[type=range] { width: 240px; }
+  #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 64px; }
+</style>
+</head>
+<body>
+<div id="scena"></div>
+<div id="panel">
+  <h1>Fizyczny koszt transportu (dla gry „Zasoby")</h1>
+  <p>Pół-samochód (nadwozie na dwóch resorach) przejeżdża 100 m (1 heks)
+     po terenie o rosnącej szorstkości. Paliwo ~ energia strat w
+     amortyzatorach + praca wspinaczki. Animacja: teren poziomu 3 (góry).</p>
+  <table id="tabela">
+    <tr><th>poziom</th><th>E [kJ/heks]</th><th>mnożnik</th><th>rms a<sub>z</sub></th></tr>
+  </table>
+  <p id="wniosek"></p>
+</div>
+<div id="sterowanie">
+  <button id="graj">⏸ pauza</button>
+  <input type="range" id="suwak" min="0" value="0" step="1">
+  <span id="czas">0.00 s</span>
+  <label style="font-size:12px"><input type="checkbox" id="petla" checked> pętla</label>
+</div>
+
+<script src="dane_transport.js"></script>
+<script type="importmap">
+{ "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const klatki = DANE.klatki;
+const krokCzasu = DANE.dt * 10;   // klatki zapisane co 10 krokow
+
+// tabela wynikow
+const tabela = document.getElementById('tabela');
+for (const w of DANE.wyniki) {
+  const tr = document.createElement('tr');
+  const mn = (w.E_razem_kJ / DANE.wyniki[0].E_razem_kJ).toFixed(1);
+  for (const tekst of [`${w.poziom} (${w.nazwa})`, `${w.E_razem_kJ}`,
+                       `${mn}x`, `${w.rms_przysp_ms2}`]) {
+    const td = document.createElement('td');
+    td.textContent = tekst;
+    tr.appendChild(td);
+  }
+  tabela.appendChild(tr);
+}
+document.getElementById('wniosek').textContent =
+  `Koszt rośnie nieliniowo z poziomem terenu; dopasowanie liniowe daje ` +
+  `„paliwo za wysokość" ≈ ${DANE.paliwo_za_wysokosc} × koszt na równinie.`;
+
+// scena
+const scena = new THREE.Scene();
+scena.background = new THREE.Color(0x10141a);
+scena.fog = new THREE.Fog(0x10141a, 15, 45);
+
+const kamera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 200);
+kamera.position.set(6, 4, 10);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('scena').appendChild(renderer.domElement);
+
+const kontrola = new OrbitControls(kamera, renderer.domElement);
+kontrola.enableDamping = true;
+
+scena.add(new THREE.HemisphereLight(0xbcd4ff, 0x30281e, 0.9));
+const slonce = new THREE.DirectionalLight(0xffffff, 1.6);
+slonce.position.set(5, 10, 4);
+slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+slonce.shadow.camera.left = -15; slonce.shadow.camera.right = 15;
+slonce.shadow.camera.top = 15; slonce.shadow.camera.bottom = -15;
+scena.add(slonce);
+
+// teren jako wstega (profil z DANE.teren, szerokosc 4 m)
+const profil = DANE.teren;
+const geoTeren = new THREE.PlaneGeometry(100, 4, profil.length - 1, 1);
+const poz = geoTeren.attributes.position;
+for (let i = 0; i < poz.count; i++) {
+  const x = poz.getX(i) + 50;   // 0..100
+  const idx = Math.min(profil.length - 1,
+    Math.max(0, Math.round(x / 100 * (profil.length - 1))));
+  poz.setZ(i, profil[idx][1]);  // plane: z przed obrotem = wysokosc
+}
+geoTeren.computeVertexNormals();
+const teren = new THREE.Mesh(geoTeren,
+  new THREE.MeshStandardMaterial({ color: 0x2a3a2f, roughness: 0.95 }));
+teren.rotation.x = -Math.PI/2;
+teren.position.x = 50;
+teren.receiveShadow = true;
+scena.add(teren);
+
+// pojazd: skrzynia + kola dekoracyjne
+const swiat = new THREE.Group();
+swiat.rotation.x = -Math.PI/2;   // z symulacji -> y three
+scena.add(swiat);
+
+const poj = new THREE.Group();
+const skrzynia = new THREE.Mesh(
+  new THREE.BoxGeometry(DANE.pojazd.dlugosc, 1.2, 0.9),
+  new THREE.MeshStandardMaterial({ color: 0xc9772e, roughness: 0.6 }));
+skrzynia.position.z = 0.15;
+skrzynia.castShadow = true;
+poj.add(skrzynia);
+for (const s of [DANE.pojazd.rozstaw/2, -DANE.pojazd.rozstaw/2]) {
+  for (const y of [0.5, -0.5]) {
+    const kolo = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.28, 0.28, 0.2, 20),
+      new THREE.MeshStandardMaterial({ color: 0x222a33, roughness: 0.8 }));
+    kolo.position.set(s, y, -0.55);
+    kolo.castShadow = true;
+    poj.add(kolo);
+  }
+}
+swiat.add(poj);
+
+// animacja
+const suwak = document.getElementById('suwak');
+suwak.max = klatki.length - 1;
+const przyciskGraj = document.getElementById('graj');
+const poleCzas = document.getElementById('czas');
+const polePetla = document.getElementById('petla');
+let gra = true, klatka = 0, akumulator = 0;
+
+przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
+suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustawKlatke(klatka); };
+
+function ustawKlatke(nr) {
+  const kl = klatki[nr];
+  // x jazdy syntetyczne (symulacja w ukladzie pojazdu), z i pochylenie z fizyki
+  poj.position.set(kl.x, 0, kl.z);
+  poj.quaternion.set(kl.p[1], kl.p[2], kl.p[3], kl.p[0]);
+  poleCzas.textContent = (nr * krokCzasu).toFixed(2) + ' s';
+  suwak.value = nr;
+  kontrola.target.lerp(new THREE.Vector3(kl.x, 1.0, 0), 0.1);
+  kamera.position.x += (kl.x + 6 - kamera.position.x) * 0.1;
+}
+
+let poprzedni = performance.now();
+function petla(teraz) {
+  requestAnimationFrame(petla);
+  const dtReal = (teraz - poprzedni) / 1000;
+  poprzedni = teraz;
+  if (gra) {
+    akumulator += dtReal;
+    while (akumulator >= krokCzasu) {
+      akumulator -= krokCzasu;
+      klatka += 1;
+      if (klatka >= klatki.length) klatka = polePetla.checked ? 0 : klatki.length - 1;
+    }
+    ustawKlatke(klatka);
+  }
+  kontrola.update();
+  renderer.render(scena, kamera);
+}
+ustawKlatke(0);
+requestAnimationFrame(petla);
+
+addEventListener('resize', () => {
+  kamera.aspect = innerWidth/innerHeight;
+  kamera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
