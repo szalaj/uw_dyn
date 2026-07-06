@@ -24,6 +24,7 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/bokser.py` | kickboxing na worku: sierpowy i front kick; worek to wahadło z masą, ciosy trafiają w nie przez kontakt bryła-bryła |
 | `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
 | `przyklady/krok.py` | praca nóg: krok w bok z balansem PID (mechanika + balans; kierunkowy krok w toku) |
+| `przyklady/pompka.py` | pompka (push-up): ciało jako dźwignia na palcach stóp, ramiona-zawiasy, dłonie na kontakcie, łokcie napędzane PID |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
 | `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
