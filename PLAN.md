@@ -246,12 +246,15 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
       (~0.25 m dryfu w 0.3 s). Wymaga też małego kroku (dt~5e-5, model sztywny)
       — sim jest wolny (0.05 s ≈ 35 s ściany), więc test kontaktu jest
       statyczny, nie symulacyjny.
+- [x] Rzutowanie ważone macierzą mas — **ZROBIONE 2026-07-06**:
+      `projekcja_polozen` liczy poprawkę w metryce mas (układ KKT, jak
+      `projekcja_predkosci`). Dryf figury na stopach spadł z 0.247 do 0.115 m
+      (mniej pasożytniczego obrotu), zestaw testów 118 → 47 s. Sufit `dt`
+      figury wyznacza teraz sztywność aktuatorów/kontaktu, nie projekcja
+      (dalej: integrator półniejawny/RATTLE, `docs/ULEPSZENIA.md`).
 - [ ] Regulator równowagi (NASTĘPNY KROK): sprzężenie od położenia CoM do
       kostek (przód-tył) i bioder (bok), utrzymujące CoM nad wielobokiem
-      podparcia. Strojenie kosztowne przy dt~5e-5 — rozważyć najpierw
-      tańszy model (mniej sztywne stawy + balans zamiast sztywności) lub
-      rzutowanie ważone macierzą mas (patrz `docs/ULEPSZENIA.md`), które
-      pozwoli na większy krok.
+      podparcia.
 - [ ] Praca nóg: krok, unik, zejście z linii — na bazie kontaktu i przenoszenia
       ciężaru.
 

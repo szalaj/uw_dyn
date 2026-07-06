@@ -452,23 +452,48 @@ class Uklad:
             p = q[3*N+4*k:3*N+4*k+4]
             p /= np.linalg.norm(p)
 
-    # rzutowanie polozen na rozmaitosc wiezow
+    # macierz mas w ukladzie wspolrzednych q = [r (3N), p (4N)]
+    def _macierz_mas_q(self, q):
+        N = self.N
+        Gz = self.zbiorczeG(q)
+        Mq = np.zeros([7*N, 7*N])
+        Mq[0:3*N, 0:3*N] = self.zbiorczeM()
+        Mq[3*N:, 3*N:] = 4*Gz.T.dot(self.zbiorczeJ()).dot(Gz)
+        return Mq
+
+    # rzutowanie polozen na rozmaitosc wiezow (metryka mas)
     def projekcja_polozen(self, q, tol=1e-10, maks_iter=20):
         """Poprawia q tak, by wiezy kinematyczne i normy kwaternionow byly
-        spelnione (Newton z poprawka minimalnej normy). Zwraca nowe q.
+        spelnione. Zwraca nowe q.
 
-        Kwaterniony sa normalizowane przed i po kazdej iteracji: jakobiany
-        wiezow sa dokladne tylko dla kwaternionow jednostkowych, wiec
-        poprawka nie moze zawierac skladowej skalujacej kwaternion."""
+        Poprawka jest ważona macierzą mas (dynamicznie spójna, jak
+        `projekcja_predkosci`): rozwiazuje uklad KKT [[M, J^T],[J, 0]][dq; l]
+        = [0; F], czyli minimalizuje dq^T M dq przy J dq = F. Dzieki temu
+        korekta więzow nie wstrzykuje pasożytniczego obrotu lekkich członów
+        (np. ramienia przy stawie kulistym), co przy poprawce minimalnej normy
+        wymuszało bardzo maly krok. Singularny kierunek metryki mas (norma
+        kwaternionu) pinują same więzy w układzie KKT. Kwaterniony sa
+        normalizowane przed i po kazdej iteracji (jakobiany dokladne tylko dla
+        kwaternionow jednostkowych)."""
+        N = self.N
+        M = self.M
         q = np.array(q, dtype=float)
         self._normalizuj_kwaterniony(q)
         F = self.wiezyKP(q)
         norma = np.linalg.norm(F)
+        nw = 7*N + M + N
         for _ in range(maks_iter):
             if norma < tol:
                 break
             Jq = self._jakobianKP_q(q)
-            popr = Jq.T.dot(np.linalg.solve(Jq.dot(Jq.T), F)).ravel()
+            Mq = self._macierz_mas_q(q)
+            A = np.zeros([nw, nw])
+            rhs = np.zeros(nw)
+            A[0:7*N, 0:7*N] = Mq
+            A[0:7*N, 7*N:] = Jq.T
+            A[7*N:, 0:7*N] = Jq
+            rhs[7*N:] = F.ravel()
+            popr = np.linalg.solve(A, rhs)[0:7*N]
 
             # kontrola kroku (tlumienie w razie rozbiegania)
             wsp = 1.0
@@ -497,10 +522,7 @@ class Uklad:
         q = np.asarray(q, dtype=float)
         dq = np.asarray(dq, dtype=float)
 
-        Gz = self.zbiorczeG(q)
-        Mq = np.zeros([7*N, 7*N])
-        Mq[0:3*N, 0:3*N] = self.zbiorczeM()
-        Mq[3*N:, 3*N:] = 4*Gz.T.dot(self.zbiorczeJ()).dot(Gz)
+        Mq = self._macierz_mas_q(q)
 
         Jq = self._jakobianKP_q(q)
         nw = 7*N + M + N

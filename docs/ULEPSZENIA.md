@@ -48,13 +48,15 @@ powielanie kodu i pozwoli na zdarzenia (patrz punkt 4).
 - `sym` (RK45 z solve_ivp) jest dokładny, ale nie stabilizuje więzów
   (tylko Baumgarte przez alfa/beta) i nie przyjmuje callbacków; po
   wprowadzeniu wspólnego interfejsu sił warto ujednolicić.
-- **Rzutowanie ważone macierzą mas** (`projekcja_polozen`): obecne rzutowanie
-  min-normowe (`J^T (J J^T)^{-1} F`) przy stawach kulistych wstrzykuje
-  pasożytniczy obrót lekkich członów (pozycja barku zależy od orientacji
-  ramienia), stąd pełna sylwetka wymaga `dt=1e-4`. Rzutowanie w metryce mas
-  (`M^{-1} J^T (J M^{-1} J^T)^{-1} F`, jak w `projekcja_predkosci`) usunęłoby
-  to i pozwoliło na większy krok. Zmiana dotyka wszystkich przykładów —
-  wymaga ponownej walidacji, ale fizycznie jest poprawniejsza.
+- **Rzutowanie ważone macierzą mas** (`projekcja_polozen`) — **ZROBIONE
+  2026-07-06**: zamiast poprawki min-normowej `projekcja_polozen` rozwiazuje
+  uklad KKT `[[M, J^T],[J,0]][dq;l]=[0;F]` (minimalizuje `dq^T M dq` przy
+  `J dq = F`), spójnie z `projekcja_predkosci`. Efekt: mniej pasożytniczego
+  obrotu lekkich członów (dryf figury na stopach z 0.247 do 0.115 m w 0.3 s),
+  lepsze uwarunkowanie i szybszy zestaw testów (118 → 47 s). Uwaga: sufit
+  kroku `dt` pełnej sylwetki wyznacza teraz SZTYWNOŚĆ aktuatorów i kontaktu
+  (stabilność jawnego Eulera), nie projekcja — to osobny kierunek (integrator
+  półniejawny/RATTLE, punkt 3 powyżej).
 
 ## 4. Zdarzenia (event detection)
 
