@@ -237,9 +237,21 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
       (jab, cross, hak, podbródkowy, kopnięcia: front/round/side), parametryzowane
       tempem i siłą. Wzorzec z `bokser.py`: sekwencja garda → cios → powrót,
       cele kątowe modulowane fazą (dyskretny sterownik co segment).
-- [ ] Utrzymanie równowagi na nogach z kontaktem stóp (`SilaKontaktu`) —
-      to najtrudniejsze; open-loop się przewraca (jak chód pieska). Potrzebny
-      regulator postawy (środek masy nad wielobokiem podparcia) i/lub praca nóg.
+- [~] Postawienie postaci na nogach z kontaktem — **CZĘŚCIOWO 2026-07-06**:
+      `zbuduj_postac(..., podparcie='stopy')` daje swobodną podstawę stojącą na
+      stopach (bez pinu miednicy, kontakt `SilaKontaktu` w 4 punktach każdej
+      stopy = wielobok podparcia, stawy trzymane sztywno). Kontakt podpiera
+      ciężar (zweryfikowane statycznie). ALE: to wysoki odwrócony wahadeł na
+      podatnym kontakcie, więc bez aktywnego balansu przewraca się bokiem
+      (~0.25 m dryfu w 0.3 s). Wymaga też małego kroku (dt~5e-5, model sztywny)
+      — sim jest wolny (0.05 s ≈ 35 s ściany), więc test kontaktu jest
+      statyczny, nie symulacyjny.
+- [ ] Regulator równowagi (NASTĘPNY KROK): sprzężenie od położenia CoM do
+      kostek (przód-tył) i bioder (bok), utrzymujące CoM nad wielobokiem
+      podparcia. Strojenie kosztowne przy dt~5e-5 — rozważyć najpierw
+      tańszy model (mniej sztywne stawy + balans zamiast sztywności) lub
+      rzutowanie ważone macierzą mas (patrz `docs/ULEPSZENIA.md`), które
+      pozwoli na większy krok.
 - [ ] Praca nóg: krok, unik, zejście z linii — na bazie kontaktu i przenoszenia
       ciężaru.
 

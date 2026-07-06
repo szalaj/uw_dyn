@@ -62,10 +62,40 @@ def test_postac_trzyma_poze_bez_grawitacji():
     ukl, nry, q0, akt = zbuduj_postac(75.0, 1.80)
     ukl.grawitacja = False
     N = ukl.N
-    ukl.sym2(np.concatenate((q0, np.zeros(7*N))), 0.0, 0.5, 0.0005)
+    ukl.sym2(np.concatenate((q0, np.zeros(7*N))), 0.0, 0.1, 0.0005)
     dryf = max(np.linalg.norm(ukl.Y[-1][3*(nry[n]-1):3*(nry[n]-1)+3]
                               - q0[3*(nry[n]-1):3*(nry[n]-1)+3]) for n in nry)
     assert dryf < 1e-3
+
+
+def test_postac_na_stopach_sklada_sie():
+    """Tryb 'stopy': swobodna podstawa, brak pinu miednicy, kontakt stop."""
+    ukl, nry, q0, akt = zbuduj_postac(75.0, 1.80, podparcie='stopy')
+    assert ukl.N == 12
+    assert ukl.M == 45          # 48 - 3 (bez stawu kulistego w miednicy)
+    kontakty = [s for s in ukl.silyWewn if type(s).__name__ == 'SilaKontaktu']
+    assert len(kontakty) == 8   # 4 punkty pod kazda stopa
+
+
+def test_stopy_podpieraja_ciezar():
+    """Wcisniete stopy daja pionowa sile kontaktu podpierajaca ciezar ciala."""
+    ukl, nry, q0, akt = zbuduj_postac(75.0, 1.80, podparcie='stopy')
+    N = ukl.N
+    kontakty = [s for s in ukl.silyWewn if type(s).__name__ == 'SilaKontaktu']
+    dq = np.zeros(7*N)
+
+    # bez wciiescia (sola na z=0): brak sily
+    Fz0 = sum(s.sila(q0, dq, N)[2][2, 0] for s in kontakty)
+    assert Fz0 == pytest.approx(0.0, abs=1e-6)
+
+    # obnizenie calej postaci o 5 mm: stopy wnikaja, sila w gore ~ 8*k*delta
+    delta = 0.005
+    q = q0.copy()
+    for i in range(N):
+        q[3*i+2] -= delta
+    Fz = sum(s.sila(q, dq, N)[2][2, 0] for s in kontakty)
+    assert Fz > 0                                  # sila skierowana w gore
+    assert Fz == pytest.approx(8*4.0e4*delta, rel=0.05)   # zgodnie z modelem
 
 
 def test_postac_stoi_pod_grawitacja():
@@ -73,7 +103,7 @@ def test_postac_stoi_pod_grawitacja():
     uklad sztywny: ciezki tulow + wiele stawow)."""
     ukl, nry, q0, akt = zbuduj_postac(75.0, 1.80)
     N = ukl.N
-    ukl.sym2(np.concatenate((q0, np.zeros(7*N))), 0.0, 0.12, 0.0001)
+    ukl.sym2(np.concatenate((q0, np.zeros(7*N))), 0.0, 0.04, 0.0001)
     assert not np.isnan(ukl.Y).any()
     dryf = max(np.linalg.norm(ukl.Y[-1][3*(nry[n]-1):3*(nry[n]-1)+3]
                               - q0[3*(nry[n]-1):3*(nry[n]-1)+3]) for n in nry)

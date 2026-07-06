@@ -91,24 +91,34 @@ def masa_calkowita(masa_ciala, wzrost):
 # Builder pelnej sylwetki (stojaca postac) jako Uklad wieloczlonowy
 # ---------------------------------------------------------------------------
 
-def zbuduj_postac(masa_ciala=75.0, wzrost=1.80, k_staw=300.0, c_staw=15.0):
+def zbuduj_postac(masa_ciala=75.0, wzrost=1.80, k_staw=300.0, c_staw=15.0,
+                  podparcie='miednica'):
     """Buduje stojaca postac czlowieka jako Uklad wieloczlonowy.
 
-    Segmenty: tulow (podstawa, przypieta do podloza), glowa, po obu stronach
-    ramie+przedramie oraz udo+podudzie+stopa (11 czlonow). Stawy: bark, biodro,
-    szyja i przypiecie tulowia jako kuliste (Para_Sferyczna + MomentSferyczny);
-    lokiec, kolano, kostka jako zawiasy (Polaczenie_Obr + MomentWzgledny).
-    Aktuatory trzymaja poze neutralna (stojaca).
+    Segmenty: tulow (podstawa), glowa, po obu stronach ramie+przedramie oraz
+    udo+podudzie+stopa (12 czlonow). Stawy: bark, biodro, szyja jako kuliste
+    (Para_Sferyczna + MomentSferyczny); lokiec, kolano, kostka jako zawiasy
+    (Polaczenie_Obr + MomentWzgledny). Aktuatory trzymaja poze neutralna.
 
-    Zwraca (uklad, nry, q0, aktuatory): nry mapuje nazwe segmentu na numer
-    czlonu, q0 to wektor wspolrzednych pozy neutralnej, aktuatory to slownik
-    nazwa_stawu -> aktuator (cele mozna podmieniac w sterowaniu)."""
+    podparcie:
+      'miednica' - tulow przypiety do podloza w miednicy (stabilne, bez
+                   balansu; do zadan gornej czesci ciala, np. bokser),
+      'stopy'    - swobodna podstawa stojaca na stopach (kontakt SilaKontaktu
+                   w 4 punktach kazdej stopy = wielobok podparcia); stawy
+                   trzymane sztywno (quasi-sztywny posag), CoM nad stopami.
+                   Wymaga malego kroku (dt~5e-5) i balansu przy zaburzeniach.
+
+    Zwraca (uklad, nry, q0, aktuatory)."""
     from uw_dyn.uklad import Uklad
     from uw_dyn.czlony import Czlon
     from uw_dyn.wiezy import Para_Sferyczna, Polaczenie_Obr
-    from uw_dyn.sily import MomentSferyczny, MomentWzgledny
+    from uw_dyn.sily import MomentSferyczny, MomentWzgledny, SilaKontaktu
     from uw_dyn.algebra import (wektor, u2p, R, wektor_p,
                                 mnoz_kwaterniony, sprzezenie_kwaternionu)
+
+    na_stopach = (podparcie == 'stopy')
+    if podparcie not in ('miednica', 'stopy'):
+        raise ValueError("podparcie: 'miednica' albo 'stopy'")
 
     S = segmenty(masa_ciala, wzrost)
     OSX = np.array([1.0, 0.0, 0.0])
@@ -117,11 +127,14 @@ def zbuduj_postac(masa_ciala=75.0, wzrost=1.80, k_staw=300.0, c_staw=15.0):
     p_id = np.array([1.0, 0.0, 0.0, 0.0])
     p_stopa = u2p(OSY, np.pi/2)     # lokalna os z do przodu (stopa)
 
+    GRUB_STOPY = 0.04              # polgrubosc stopy (sola ponizej SM stopy)
     bark_y = 0.13*wzrost
     biodro_y = 0.09*wzrost
     L_t = S['tulow'].dlugosc
     com_t = S['tulow'].com
-    P = S['udo_L'].dlugosc + S['podudzie_L'].dlugosc + 0.08   # wysokosc miednicy
+    # wysokosc miednicy: na stopach sola stoi na z=0, przy pinie luzny zapas
+    dol_nogi = S['udo_L'].dlugosc + S['podudzie_L'].dlugosc
+    P = dol_nogi + (GRUB_STOPY if na_stopach else 0.08)
 
     # numeracja czlonow
     kolejnosc = ['tulow', 'glowa',
@@ -192,26 +205,44 @@ def zbuduj_postac(masa_ciala=75.0, wzrost=1.80, k_staw=300.0, c_staw=15.0):
         aktuatory[nazwa] = a
 
     t = nry['tulow']
-    # przypiecie tulowia do podloza (staw kulisty w miednicy) + pozycja
-    pelvis_w = poz['tulow'] + R(wektor_p(*p_id)).dot(prox(S['tulow']).ravel())
-    staw_kulisty('miednica', 0, t, wektor(*pelvis_w), prox(S['tulow']),
-                 8*k_staw, 4*c_staw)
+    # mnoznik sztywnosci: na stopach potrzeba quasi-sztywnego ciala (balans)
+    ms = 12.0 if na_stopach else 1.0
+
+    if not na_stopach:
+        # przypiecie tulowia do podloza (staw kulisty w miednicy)
+        pelvis_w = poz['tulow'] + R(wektor_p(*p_id)).dot(prox(S['tulow']).ravel())
+        staw_kulisty('miednica', 0, t, wektor(*pelvis_w), prox(S['tulow']),
+                     8*k_staw, 4*c_staw)
+
     staw_kulisty('szyja', t, nry['glowa'],
-                 wektor(0, 0, (1-com_t)*L_t), prox(S['glowa']), k_staw, c_staw)
+                 wektor(0, 0, (1-com_t)*L_t), prox(S['glowa']), ms*k_staw, ms*c_staw)
 
     for bok, sy in (('L', +1), ('P', -1)):
         staw_kulisty('bark_'+bok, t, nry['ramie_'+bok],
                      wektor(0, sy*bark_y, (1-com_t)*L_t), prox(S['ramie_'+bok]),
-                     k_staw, c_staw)
+                     ms*k_staw, ms*c_staw)
         staw_zawias('lokiec_'+bok, nry['ramie_'+bok], nry['przedramie_'+bok],
-                    dist(S['ramie_'+bok]), prox(S['przedramie_'+bok]), k_staw, c_staw)
+                    dist(S['ramie_'+bok]), prox(S['przedramie_'+bok]), ms*k_staw, ms*c_staw)
         staw_kulisty('biodro_'+bok, t, nry['udo_'+bok],
                      wektor(0, sy*biodro_y, -com_t*L_t), prox(S['udo_'+bok]),
-                     2*k_staw, 2*c_staw)
+                     2*ms*k_staw, 2*ms*c_staw)
         staw_zawias('kolano_'+bok, nry['udo_'+bok], nry['podudzie_'+bok],
-                    dist(S['udo_'+bok]), prox(S['podudzie_'+bok]), 2*k_staw, 2*c_staw)
+                    dist(S['udo_'+bok]), prox(S['podudzie_'+bok]), 2*ms*k_staw, 2*ms*c_staw)
         staw_zawias('kostka_'+bok, nry['podudzie_'+bok], nry['stopa_'+bok],
-                    dist(S['podudzie_'+bok]), prox(S['stopa_'+bok]), k_staw, c_staw)
+                    dist(S['podudzie_'+bok]), prox(S['stopa_'+bok]), 2*ms*k_staw, 2*ms*c_staw)
+
+    if na_stopach:
+        # kontakt: 4 punkty pod kazda stopa (piety i palce, wielobok podparcia)
+        L_stopy = S['stopa_L'].dlugosc
+        w = 0.045
+        for bok in ('L', 'P'):
+            nr = nry['stopa_'+bok]
+            for sx in (-0.5*L_stopy, 0.5*L_stopy):      # pieta / palce (lokalna z)
+                for sy2 in (-w, w):                     # szerokosc (lokalna y)
+                    # sola jest w kierunku +lokalna x (przy p_stopa lokalna x = dol)
+                    ukl.dodajSileWewn(SilaKontaktu(
+                        nr, wektor(GRUB_STOPY, sy2, sx),
+                        k=4.0e4, c=400.0, mu=1.0, eps=0.003))
 
     ukl.grawitacja = True
 
