@@ -69,6 +69,8 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
   - `SilaKontaktu`: jednostronny kontakt punktu ciała z podłożem z=0 (model penalty ze sprężyną, tłumieniem i tarciem),
   - `MomentWzgledny`: aktuator obrotowy 1 DOF w przegubie (sprężyna-tłumik dążący do zadanego kąta), do napędu stawów zawiasowych (kolano, łokieć),
   - `MomentSferyczny`: napędzany staw kulisty 3 DOF (sprężyna-tłumik na orientacji 3D dążący do zadanej orientacji względnej); łączyć z `Para_Sferyczna`, która wiąże położenie, do stawów kulistych (bark, biodro),
+  - `OgranicznikKata`: miękki ogranicznik zakresu ruchu przegubu zawiasowego (łokieć, kolano); jednostronna sprężyna-tłumik aktywna poza `[kat_min, kat_max]`,
+  - `OgranicznikStozka`: miękki ogranicznik stożka dla stawu kulistego (bark, biodro); ogranicza odchylenie osi od kierunku neutralnego do `kat_max`,
   - `SilaZewn`: siła lub moment zewnętrzny w osiach globalnych działający na wybrany człon,
   - grawitacja włączana flagą `ukl.grawitacja = True`.
 

@@ -197,8 +197,13 @@ drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
       To odblokowuje naturalne pozy (garda z łokciami w dół), których
       `bokser.py` nie miał (płaszczyzna pozioma). **ZROBIONE 2026-07-06:**
       `bokser.py` przebudowany na barki kuliste — garda jest teraz naturalna.
-- [ ] Limity zakresu ruchu w stawach (miękkie ograniczniki: jednostronna
-      sprężyna-tłumik przy przekroczeniu kąta granicznego).
+- [x] Limity zakresu ruchu w stawach — **ZROBIONE 2026-07-06**: `OgranicznikKata`
+      (przegub 1 DOF: łokieć, kolano; jednostronna sprężyna-tłumik poza
+      `[kat_min, kat_max]`, tłumienie tylko przy wchodzeniu głębiej) oraz
+      `OgranicznikStozka` (staw kulisty: ogranicza odchylenie osi od kierunku
+      neutralnego do `kat_max`). Model penalty (miękki: dopuszcza małe
+      przejściowe wniknięcie, malejące ze sztywnością). 5 testów
+      (`test_ograniczniki.py`). Można je dołożyć do stawów boksera/modelu.
 - [ ] Model „mięśni/napędów" stawów: aktuator momentu z ograniczeniem
       maksymalnego momentu (nie liniowa sprężyna bez limitu), żeby siły ciosów
       były fizycznie sensowne.

@@ -33,7 +33,8 @@ from uw_dyn.wiezy import (
     Kat,
 )
 from uw_dyn.sily import (SilaWewnProst, SilaWPunkcie, SilaKontaktu,
-                         MomentWzgledny, MomentSferyczny, SilaZewn)
+                         MomentWzgledny, MomentSferyczny,
+                         OgranicznikKata, OgranicznikStozka, SilaZewn)
 from uw_dyn.uklad import Uklad
 
 __all__ = [
@@ -42,7 +43,8 @@ __all__ = [
     "Polaczenie_Obr", "Polaczenie_Cyl", "Polaczenie_Przes",
     "Odleglosc", "Kat",
     "SilaWewnProst", "SilaWPunkcie", "SilaKontaktu",
-    "MomentWzgledny", "MomentSferyczny", "SilaZewn",
+    "MomentWzgledny", "MomentSferyczny",
+    "OgranicznikKata", "OgranicznikStozka", "SilaZewn",
     "wektor", "wektor_p", "r_i", "dr_i", "p_i", "dp_i",
     "u2p", "EA_to_EP", "R", "G", "dG", "skew",
     "mnoz_kwaterniony", "sprzezenie_kwaternionu", "kwaternion_na_wektor_obrotu",

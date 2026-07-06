@@ -363,6 +363,176 @@ class MomentSferyczny:
         return Qr_i, Qp_i, Qr_j, Qp_j
 
 
+class OgranicznikKata:
+    """Miekki ogranicznik zakresu ruchu przegubu obrotowego 1 DOF
+    (np. lokiec, kolano). Jednostronna sprezyna-tlumik aktywna tylko, gdy kat
+    wzgledny wyjdzie poza [kat_min, kat_max]: moment przywraca do zakresu, a
+    tlumienie dziala tylko przy wchodzeniu glebiej (nie wysysa energii przy
+    powrocie). Uzywac obok przegubu (Polaczenie_Obr) i jego napedu
+    (MomentWzgledny); geometria (i, j, axis, ref) taka sama jak w MomentWzgledny.
+
+    Dla i=0 (podstawa) os i ref sa w ukladzie globalnym."""
+
+    def __init__(self, i, j, axis, ref, kat_min, kat_max, k, c):
+        self.i = i
+        self.j = j
+        self.a = np.asarray(axis, dtype=float).reshape(3, 1)
+        self.a /= np.linalg.norm(self.a)
+        self.u = np.asarray(ref, dtype=float).reshape(3, 1)
+        self.u /= np.linalg.norm(self.u)
+        self.kat_min = kat_min
+        self.kat_max = kat_max
+        self.k = k
+        self.c = c
+
+    def kat(self, q, N):
+        pj = p_i(self.j, q, N)
+        u_j = R(pj).dot(self.u)
+        if self.i == 0:
+            a_g, u_i = self.a, self.u
+        else:
+            Ri = R(p_i(self.i, q, N))
+            a_g, u_i = Ri.dot(self.a), Ri.dot(self.u)
+        sin_cz = float(np.cross(u_i.ravel(), u_j.ravel()).dot(a_g.ravel()))
+        cos_cz = float(u_i.ravel().dot(u_j.ravel()))
+        return np.arctan2(sin_cz, cos_cz)
+
+    def _przekroczenie(self, theta):
+        if theta > self.kat_max:
+            return theta - self.kat_max      # dodatnie: powyzej gornej granicy
+        if theta < self.kat_min:
+            return theta - self.kat_min      # ujemne: ponizej dolnej granicy
+        return 0.0
+
+    def energia_potencjalna(self, q, N):
+        if self.k == 0:
+            return 0.0
+        p = self._przekroczenie(self.kat(q, N))
+        return 0.5*self.k*p*p
+
+    def sila(self, q, dq, N):
+        pj = p_i(self.j, q, N)
+        Rj = R(pj)
+        Gj = G(pj)
+        om_j = Rj.dot(2*Gj.dot(dp_i(self.j, dq, N)))
+        u_j = Rj.dot(self.u)
+        if self.i == 0:
+            a_g, u_i = self.a, self.u
+            om_i = np.zeros((3, 1))
+            Ri = Gi = None
+        else:
+            pi = p_i(self.i, q, N)
+            Ri = R(pi)
+            Gi = G(pi)
+            a_g = Ri.dot(self.a)
+            u_i = Ri.dot(self.u)
+            om_i = Ri.dot(2*Gi.dot(dp_i(self.i, dq, N)))
+
+        sin_cz = float(np.cross(u_i.ravel(), u_j.ravel()).dot(a_g.ravel()))
+        cos_cz = float(u_i.ravel().dot(u_j.ravel()))
+        theta = np.arctan2(sin_cz, cos_cz)
+        przekr = self._przekroczenie(theta)
+
+        Qr_i = np.zeros((3, 1))
+        Qr_j = np.zeros((3, 1))
+        if przekr == 0.0:
+            return Qr_i, np.zeros((4, 1)), Qr_j, np.zeros((4, 1))
+
+        dtheta = float(a_g.ravel().dot((om_j - om_i).ravel()))
+        tau = -self.k*przekr
+        # tlumienie tylko, gdy przegub wchodzi glebiej w ogranicznik
+        if przekr > 0 and dtheta > 0:
+            tau -= self.c*dtheta
+        elif przekr < 0 and dtheta < 0:
+            tau -= self.c*dtheta
+        M = tau*a_g
+
+        Qp_j = 2*Gj.transpose().dot(Rj.transpose().dot(M))
+        if self.i == 0:
+            Qp_i = np.zeros((4, 1))
+        else:
+            Qp_i = -2*Gi.transpose().dot(Ri.transpose().dot(M))
+        return Qr_i, Qp_i, Qr_j, Qp_j
+
+
+class OgranicznikStozka:
+    """Miekki ogranicznik stozka zakresu ruchu stawu kulistego (np. bark,
+    biodro). Ogranicza kat odchylenia osi `os` czlonu j od tej samej osi
+    czlonu i (kierunku neutralnego) do `kat_max`. Powyzej: moment przywraca
+    os j do stozka, z tlumieniem tylko przy dalszym odchylaniu. Uzywac ze
+    stawem kulistym (Para_Sferyczna + MomentSferyczny).
+
+    Dla i=0 kierunek neutralny jest staly w ukladzie globalnym."""
+
+    def __init__(self, i, j, os, kat_max, k, c):
+        self.i = i
+        self.j = j
+        self.a = np.asarray(os, dtype=float).reshape(3, 1)
+        self.a /= np.linalg.norm(self.a)
+        self.kat_max = kat_max
+        self.k = k
+        self.c = c
+
+    def _osie(self, q, N):
+        a_j = R(p_i(self.j, q, N)).dot(self.a).ravel()
+        a_i = (self.a.ravel() if self.i == 0
+               else R(p_i(self.i, q, N)).dot(self.a).ravel())
+        return a_i, a_j
+
+    def kat(self, q, N):
+        a_i, a_j = self._osie(q, N)
+        return float(np.arccos(np.clip(a_i.dot(a_j), -1.0, 1.0)))
+
+    def energia_potencjalna(self, q, N):
+        if self.k == 0:
+            return 0.0
+        nad = max(0.0, self.kat(q, N) - self.kat_max)
+        return 0.5*self.k*nad*nad
+
+    def sila(self, q, dq, N):
+        Qr_i = np.zeros((3, 1))
+        Qr_j = np.zeros((3, 1))
+        a_i, a_j = self._osie(q, N)
+        kat = float(np.arccos(np.clip(a_i.dot(a_j), -1.0, 1.0)))
+        nad = kat - self.kat_max
+        if nad <= 0.0:
+            return Qr_i, np.zeros((4, 1)), Qr_j, np.zeros((4, 1))
+
+        # os obrotu przywracajaca a_j do a_i (moment na j w te strone)
+        n = np.cross(a_j, a_i)
+        nn = np.linalg.norm(n)
+        if nn < 1e-9:
+            return Qr_i, np.zeros((4, 1)), Qr_j, np.zeros((4, 1))
+        n = n/nn
+
+        pj = p_i(self.j, q, N)
+        Rj = R(pj)
+        Gj = G(pj)
+        om_j = Rj.dot(2*Gj.dot(dp_i(self.j, dq, N))).ravel()
+        if self.i == 0:
+            om_i = np.zeros(3)
+            Ri = Gi = None
+        else:
+            pi = p_i(self.i, q, N)
+            Ri = R(pi)
+            Gi = G(pi)
+            om_i = Ri.dot(2*Gi.dot(dp_i(self.i, dq, N))).ravel()
+
+        # tempo dalszego odchylania (skladowa predkosci wzglednej wzdluz -n)
+        d_nad = -float((om_j - om_i).dot(n))
+        tau = self.k*nad
+        if d_nad > 0:
+            tau += self.c*d_nad
+        M = (tau*n).reshape(3, 1)
+
+        Qp_j = 2*Gj.transpose().dot(Rj.transpose().dot(M))
+        if self.i == 0:
+            Qp_i = np.zeros((4, 1))
+        else:
+            Qp_i = -2*Gi.transpose().dot(Ri.transpose().dot(M))
+        return Qr_i, Qp_i, Qr_j, Qp_j
+
+
 class SilaZewn:
     """Sila (Fx/Fy/Fz) lub moment (nx/ny/nz) o stalej wielkosci dzialajacy na czlon."""
     def __init__(self,czlon, rodzaj, wielkosc):
