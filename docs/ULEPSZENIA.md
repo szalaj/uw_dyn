@@ -48,6 +48,13 @@ powielanie kodu i pozwoli na zdarzenia (patrz punkt 4).
 - `sym` (RK45 z solve_ivp) jest dokładny, ale nie stabilizuje więzów
   (tylko Baumgarte przez alfa/beta) i nie przyjmuje callbacków; po
   wprowadzeniu wspólnego interfejsu sił warto ujednolicić.
+- **Rzutowanie ważone macierzą mas** (`projekcja_polozen`): obecne rzutowanie
+  min-normowe (`J^T (J J^T)^{-1} F`) przy stawach kulistych wstrzykuje
+  pasożytniczy obrót lekkich członów (pozycja barku zależy od orientacji
+  ramienia), stąd pełna sylwetka wymaga `dt=1e-4`. Rzutowanie w metryce mas
+  (`M^{-1} J^T (J M^{-1} J^T)^{-1} F`, jak w `projekcja_predkosci`) usunęłoby
+  to i pozwoliło na większy krok. Zmiana dotyka wszystkich przykładów —
+  wymaga ponownej walidacji, ale fizycznie jest poprawniejsza.
 
 ## 4. Zdarzenia (event detection)
 

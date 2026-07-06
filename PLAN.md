@@ -183,10 +183,21 @@ drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
 
 ### Etap A: solidny model człowieka (biomechanika)
 
-- [ ] Pełna sylwetka jako łańcuch członów: miednica, tułów (1–2 segmenty),
-      głowa, ramiona (bark+łokieć, docelowo +nadgarstek), nogi (biodro+kolano
-      +kostka). Masy i tensory bezwładności z tablic antropometrycznych
-      (np. de Leva / Winter), skalowane wzrostem i masą zawodnika.
+- [x] Pełna sylwetka z antropometrii — **ZROBIONE 2026-07-06**: moduł
+      `antropometria.py` z tablicą Wintera (masy jako ułamek masy ciała,
+      długości jako ułamek wzrostu, środki mas, promienie bezwładności) i
+      funkcją `segmenty(masa, wzrost)` (12 segmentów, suma mas = masa ciała;
+      dłoń scalona z przedramieniem). Tensory: pręt/walec wzdłuż lokalnej z.
+      Builder `zbuduj_postac(masa, wzrost)` składa stojącą postać (tułów jako
+      podstawa przypięta w miednicy, głowa, ramiona bark+łokieć, nogi
+      biodro+kolano+kostka; barki/biodra/szyja kuliste, łokcie/kolana/kostki
+      zawiasowe; aktuatory trzymają pozę neutralną, cele = zmierzona poza →
+      punkt stały bez zgadywania znaków). Postać stoi stabilnie przy
+      `dt=1e-4` (układ sztywny; większy krok wpada w rezonans). 8 testów
+      (`test_antropometria.py`). Uwaga na przyszłość: rzutowanie położeń przy
+      stawach kulistych bywa czułe (pozycja barku zależy od orientacji
+      ramienia) — mały krok to obchodzi; docelowo warto rozważyć rzutowanie
+      ważone macierzą mas.
 - [x] Realistyczne stawy 3D — **ZROBIONE 2026-07-06**: dodano `MomentSferyczny`
       (napędzany staw kulisty 3 DOF = `Para_Sferyczna` + moment 3D w ramce
       globalnej: M = -k·φ - c·(ω_j-ω_i), φ z wektora obrotu błędu orientacji).

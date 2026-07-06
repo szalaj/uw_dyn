@@ -36,6 +36,8 @@ from uw_dyn.sily import (SilaWewnProst, SilaWPunkcie, SilaKontaktu,
                          MomentWzgledny, MomentSferyczny,
                          OgranicznikKata, OgranicznikStozka, SilaZewn)
 from uw_dyn.uklad import Uklad
+from uw_dyn.antropometria import (Segment, segment, segmenty, masa_calkowita,
+                                  tensor_segmentu, zbuduj_postac)
 
 __all__ = [
     "Uklad", "Czlon",
@@ -49,4 +51,6 @@ __all__ = [
     "u2p", "EA_to_EP", "R", "G", "dG", "skew",
     "mnoz_kwaterniony", "sprzezenie_kwaternionu", "kwaternion_na_wektor_obrotu",
     "macierz_na_kwaternion",
+    "Segment", "segment", "segmenty", "masa_calkowita", "tensor_segmentu",
+    "zbuduj_postac",
 ]
