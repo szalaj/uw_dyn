@@ -26,15 +26,15 @@ nią załatać:
   gdyby dron miał latać szybko albo pojawił się przykład lotniczy.
 - Docelowo: wspólny interfejs sił `sila(q, dq, t)` i możliwość podania
   własnej funkcji (callback), co domknie wszystkie powyższe przypadki.
-- **Człon całkujący w aktuatorach (PID)**: `MomentWzgledny`/`MomentSferyczny`
-  to dziś regulatory PD. Pod stałym obciążeniem (grawitacja) PD ma błąd
-  ustalony (staw sag poniżej celu, bo `k*błąd` musi zrównoważyć moment
-  ciężkości). Człon całkujący `ki*∫błąd dt` zniósłby ten dryf i pozwolił na
-  niższą sztywność (większy krok). Wymaga stanu (akumulator) i dostępu do
-  `dt` w `sila` (dziś go nie ma) — czyli interfejsu sił świadomego czasu
-  albo aktualizacji całki z pętli sterownika. Alternatywa: kompensacja
-  grawitacji (feedforward). Na razie obchodzimy to mocniejszymi gainami
-  (np. `K_NOGA` w bokserze dla ciężkiej nogi).
+- **Człon całkujący w aktuatorach (PID)** — **ZROBIONE 2026-07-06**:
+  `MomentWzgledny` i `MomentSferyczny` maja opcjonalny `ki` (regulator PID
+  zamiast PD) z anti-windup (`calka_max`). Całkę aktualizuje `sym2` raz na
+  krok (hook `aktualizuj_calke`), więc działa tylko w `sym2` (nie w `sym`
+  RK45). Znosi błąd ustalony pod grawitacją (wahadło: sag PD 0.25 rad →
+  PID 0.02 rad). Domyślnie `ki=0` (pełna zgodność wsteczna, PD). Uwaga:
+  za duże `ki` destabilizuje (klasyczny nadmiar całki) — stroić ostrożnie.
+  Dla szybko zmiennych celów (ciosy) integral mniej pomaga (PD dominuje);
+  główny zysk to trzymanie pozy (postawa, stanie).
 
 ## 2. Sterowanie: callback zamiast ręcznego cięcia na segmenty
 

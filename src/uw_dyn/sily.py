@@ -229,9 +229,16 @@ class MomentWzgledny:
     tlumienie tkanek, ktore mozna dodac osobnym MomentWzgledny (k=0, c>0,
     bez moment_max).
 
+    ki: wzmocnienie czlonu calkujacego (regulator PID zamiast PD). Znosi blad
+    ustalony pod stalym obciazeniem (grawitacja) - staw dochodzi do celu bez
+    sagu. Calke aktualizuje sym2 raz na krok (metoda aktualizuj_calke); dziala
+    tylko w sym2, nie w sym (RK45). calka_max: anti-windup - ogranicza wartosc
+    czlonu calkujacego |ki*calka| [N*m].
+
     Dla i=0 (podstawa) os i ref sa w ukladzie globalnym."""
 
-    def __init__(self, i, j, axis, ref, k, theta_cel, c, moment_max=None):
+    def __init__(self, i, j, axis, ref, k, theta_cel, c, moment_max=None,
+                 ki=0.0, calka_max=None):
         self.i = i
         self.j = j
         self.a = np.asarray(axis, dtype=float).reshape(3, 1)
@@ -242,6 +249,22 @@ class MomentWzgledny:
         self.theta_cel = theta_cel
         self.c = c
         self.moment_max = moment_max
+        self.ki = ki
+        self.calka_max = calka_max
+        self._calka = 0.0
+
+    def _blad_kata(self, theta):
+        # blad zawiniety do (-pi, pi] (najkrotsza droga)
+        return (self.theta_cel - theta + np.pi) % (2*np.pi) - np.pi
+
+    def aktualizuj_calke(self, q, N, dt):
+        """Krok czlonu calkujacego (wywolywane raz na krok przez sym2)."""
+        if self.ki == 0:
+            return
+        self._calka += self._blad_kata(self.kat(q, N))*dt
+        if self.calka_max is not None:
+            lim = self.calka_max/self.ki
+            self._calka = max(-lim, min(lim, self._calka))
 
     def energia_potencjalna(self, q, N):
         if self.k == 0:
@@ -291,8 +314,8 @@ class MomentWzgledny:
 
         # blad kata zawiniety do (-pi, pi] -> najkrotsza droga; bez tego kat
         # przechodzacy przez +-pi (np. biodro ~pi) prowadzilby staw "dookola"
-        blad = (self.theta_cel - theta + np.pi) % (2*np.pi) - np.pi
-        tau = self.k*blad - self.c*dtheta
+        blad = self._blad_kata(theta)
+        tau = self.k*blad - self.c*dtheta + self.ki*self._calka
         if self.moment_max is not None:
             tau = max(-self.moment_max, min(self.moment_max, tau))
         M = tau*a_g  # moment globalny na czlon j
@@ -322,9 +345,14 @@ class MomentSferyczny:
     przykladany jako para wewnetrzna (+M na j, -M na i).
 
     moment_max: opcjonalne ograniczenie wartosci bezwzglednej (normy) momentu
-    [N*m] (saturacja jak w realnym napedzie/miesniu); None = bez limitu."""
+    [N*m] (saturacja jak w realnym napedzie/miesniu); None = bez limitu.
 
-    def __init__(self, i, j, k, c, p_cel=None, moment_max=None):
+    ki: wzmocnienie czlonu calkujacego (PID) - calkuje wektor bledu obrotu,
+    znosi blad ustalony pod grawitacja. Calke aktualizuje sym2 raz na krok
+    (aktualizuj_calke). calka_max: anti-windup na normie |ki*calka| [N*m]."""
+
+    def __init__(self, i, j, k, c, p_cel=None, moment_max=None,
+                 ki=0.0, calka_max=None):
         self.i = i
         self.j = j
         self.k = k
@@ -332,6 +360,19 @@ class MomentSferyczny:
         self.p_cel = (np.array([1.0, 0.0, 0.0, 0.0]) if p_cel is None
                       else np.asarray(p_cel, dtype=float).ravel())
         self.moment_max = moment_max
+        self.ki = ki
+        self.calka_max = calka_max
+        self._calka = np.zeros((3, 1))
+
+    def aktualizuj_calke(self, q, N, dt):
+        """Krok czlonu calkujacego (wywolywane raz na krok przez sym2)."""
+        if self.ki == 0:
+            return
+        self._calka = self._calka + self._blad(q, N).reshape(3, 1)*dt
+        if self.calka_max is not None:
+            n = self.ki*float(np.linalg.norm(self._calka))
+            if n > self.calka_max:
+                self._calka = self._calka*(self.calka_max/n)
 
     def _blad(self, q, N):
         """Wektor obrotu bledu (uklad globalny) orientacji czlonu j."""
@@ -368,7 +409,7 @@ class MomentSferyczny:
 
         phi = self._blad(q, N).reshape(3, 1)            # blad orientacji (global)
         om_rel = om_j - om_i
-        M = -self.k*phi - self.c*om_rel                 # moment globalny na j
+        M = -self.k*phi - self.c*om_rel - self.ki*self._calka   # PID, moment na j
         if self.moment_max is not None:
             nrm = float(np.linalg.norm(M))
             if nrm > self.moment_max:

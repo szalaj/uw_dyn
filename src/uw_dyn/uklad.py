@@ -555,7 +555,12 @@ class Uklad:
         dq = y[7*N:14*N]
         wyniki = [y.copy()]
 
+        # aktuatory z czlonem calkujacym (PID) - calke aktualizujemy raz na krok
+        pid = [s for s in self.silyWewn if hasattr(s, 'aktualizuj_calke')]
+
         for t in np.arange(t0,tK,dt):
+            for s in pid:
+                s.aktualizuj_calke(q, N, dt)
             LS = self.Lstrona(q,dq)
             PS = self.Pstrona(q,dq)
             ddq = np.linalg.solve(LS, PS).ravel()
