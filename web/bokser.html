@@ -147,27 +147,18 @@ function rekawica() {
 }
 const piescR = rekawica(), piescL = rekawica();
 
-// nogi (pogladowe, nieruchoma postawa bokserska: lewa z przodu)
-function noga(x, y) {
-  const g = new THREE.Group();
-  const m = new THREE.Mesh(
-    new THREE.CapsuleGeometry(0.075, 0.72, 6, 12), matCialo);
-  m.rotation.x = Math.PI/2;   // wzdluz sim-z (pion)
-  m.castShadow = true;
-  g.add(m);
-  g.position.set(x, y, 0.45);   // od ~0.01 do ~0.88 (biodra pod pasem)
-  swiat.add(g);
-  // stopa
-  const stopa = new THREE.Mesh(
-    new THREE.BoxGeometry(0.22, 0.11, 0.05),
+// nogi: udo + podudzie (prety wzdluz lokalnej z), staw kolanowy widoczny
+const udo_L = czlonZ(W.udo, matCialo, 0.075);
+const pod_L = czlonZ(W.podudzie, matCialo, 0.06);
+const udo_P = czlonZ(W.udo, matCialo, 0.075);
+const pod_P = czlonZ(W.podudzie, matCialo, 0.06);
+// stopy na koncach podudzi
+function stopa() {
+  const s = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.11, 0.05),
     new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 }));
-  stopa.position.set(x + 0.04, y, 0.03);
-  stopa.castShadow = true;
-  swiat.add(stopa);
-  return g;
+  s.castShadow = true; swiat.add(s); return s;
 }
-noga(0.16, 0.10);    // lewa (lead) z przodu
-noga(-0.16, -0.10);  // prawa (rear) z tylu
+const stopa_L = stopa(), stopa_P = stopa();
 
 // cien przeciwnika (translucentna sylwetka z przodu)
 const cien = new THREE.Group();
@@ -232,6 +223,14 @@ function ustawKlatke(nr) {
   ustawX(la_p, kl[I.la_p].r, kl[I.la_p].p, W.przedramie);
   piescR.position.copy(koniecX(kl[I.ra_p].r, kl[I.ra_p].p, W.przedramie));
   piescL.position.copy(koniecX(kl[I.la_p].r, kl[I.la_p].p, W.przedramie));
+
+  // nogi (udo + podudzie); stopa na koncu podudzia
+  ustawX(udo_L, kl[I.ud_L].r, kl[I.ud_L].p, W.udo);
+  ustawX(pod_L, kl[I.pd_L].r, kl[I.pd_L].p, W.podudzie);
+  ustawX(udo_P, kl[I.ud_P].r, kl[I.ud_P].p, W.udo);
+  ustawX(pod_P, kl[I.pd_P].r, kl[I.pd_P].p, W.podudzie);
+  stopa_L.position.copy(koniecX(kl[I.pd_L].r, kl[I.pd_L].p, W.podudzie));
+  stopa_P.position.copy(koniecX(kl[I.pd_P].r, kl[I.pd_P].p, W.podudzie));
 
   poleV.textContent = predkoscR(nr).toFixed(1) + ' m/s';
   poleCzas.textContent = (nr * dt).toFixed(2) + ' s';

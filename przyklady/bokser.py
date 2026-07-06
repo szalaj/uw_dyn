@@ -12,8 +12,11 @@
 # Orientacje ramion zadaje sie kierunkiem (funkcja `orientacja`), a cele
 # sterowania interpoluje slerpem miedzy garda a sierpowym.
 #
-# Sekwencja: garda -> wyprowadzenie ciosu -> powrot. Nogi i glowa sa
-# rysowane pogladowo (nieruchoma postawa) w wizualizacji.
+# Nogi: udo + podudzie z biodrem i STAWEM KOLANOWYM (zawiasy wokol osi y),
+# w ugietej postawie atletycznej (masy z antropometrii). Miednica przypieta,
+# wiec nogi na razie trzymaja postawe (baza pod przyszle kopniecia/kolana).
+#
+# Sekwencja: garda -> wyprowadzenie ciosu -> powrot. Glowa rysowana pogladowo.
 #
 # Wynik: web/dane_bokser.js do wizualizacji Three.js (web/bokser.html).
 
@@ -37,15 +40,26 @@ BARK_Y = 0.19                   # polowa rozstawu barkow
 L_UA, L_FA = 0.30, 0.28         # ramie (bark-lokiec), przedramie (lokiec-piesc)
 M_UA, M_FA = 2.6, 1.6
 PROM = 0.05
+# nogi: udo (biodro-kolano) i podudzie (kolano-stopa); atletyczna postawa
+L_UD, L_PD = 0.45, 0.45         # dlugosci czlonow nogi [m]
+M_UD, M_PD = 7.8, 3.6           # masy (antropometria, ~78 kg)
+BIODRO_Y = 0.12                 # polowa rozstawu bioder
+HIP_FLEX = 0.20                 # ugiecie biodra (udo lekko do przodu) [rad]
+KNEE_FLEX = 0.45                # ugiecie kolana w postawie [rad]
 
 TUL, RA_G, RA_P, LA_G, LA_P = 1, 2, 3, 4, 5
-N_CZLONOW = 5
+UD_L, PD_L, UD_P, PD_P = 6, 7, 8, 9
+N_CZLONOW = 9
 
 OS_Z = np.array([0.0, 0.0, 1.0])
+OS_Y = np.array([0.0, 1.0, 0.0])
 OSIE_Z = (wektor(1, 0, 0), wektor(0, 1, 0), wektor(0, 0, 1))   # przegub wokol pionu (pas)
 # zawias lokcia: os = lokalna x ramienia (vi=y, wi=z -> vi x wi = x); uj = x przedramienia
 OSIE_LOKIEC = (wektor(0, 1, 0), wektor(0, 0, 1), wektor(1, 0, 0))
+# zawias biodra/kolana: os = lokalna y (zgiecie w plaszczyznie strzalkowej)
+OSIE_NOGA = (wektor(0, 0, 1), wektor(1, 0, 0), wektor(0, 1, 0))
 REF_X = wektor(1, 0, 0)
+REF_Z = wektor(0, 0, 1)
 
 # ----- pozy (w ukladzie tulowia): kierunek ramienia dz, plaszczyzna lokcia dx, zgiecie -----
 # garda: lokcie w dol, piesci przy policzkach
@@ -121,6 +135,19 @@ def bark_w_tulowiu(strona):
     return wektor(0, BARK_Y if strona == 'L' else -BARK_Y, BARK_Z)
 
 
+def biodro_w_tulowiu(strona):
+    return wektor(0, BIODRO_Y if strona == 'L' else -BIODRO_Y, -TUL_H/2)
+
+
+# orientacje nog w postawie (obrot wokol y; lokalna os z w dol)
+def _p_udo():
+    return u2p(OS_Y, np.pi - HIP_FLEX)       # udo lekko do przodu
+
+
+def _p_podudzie():
+    return u2p(OS_Y, np.pi - HIP_FLEX + KNEE_FLEX)  # podudzie cofniete (kolano zgiete)
+
+
 def zbuduj():
     ukl = Uklad()
     ukl.dodajCzlon(Czlon(TUL, M_TUL, tensor_tulowia()))
@@ -128,6 +155,9 @@ def zbuduj():
     ukl.dodajCzlon(Czlon(RA_P, M_FA, tensor_preta(M_FA, L_FA)))
     ukl.dodajCzlon(Czlon(LA_G, M_UA, tensor_preta(M_UA, L_UA)))
     ukl.dodajCzlon(Czlon(LA_P, M_FA, tensor_preta(M_FA, L_FA)))
+    for nr, m, L in ((UD_L, M_UD, L_UD), (PD_L, M_PD, L_PD),
+                     (UD_P, M_UD, L_UD), (PD_P, M_PD, L_PD)):
+        ukl.dodajCzlon(Czlon(nr, m, tensor_preta(m, L)))
 
     # pas: przegub obrotowy wokol pionu (skret korpusu)
     ukl.dodajWiez(Polaczenie_Obr(0, TUL, wektor(0, 0, TUL_DOL),
@@ -146,9 +176,26 @@ def zbuduj():
         akt['lokiec_'+strona] = MomentWzgledny(ua, fa, wektor(1, 0, 0), wektor(0, 0, 1),
                                                K_LOKIEC, G[strona]['flex'], C_LOKIEC)
 
+    # nogi: biodro (zawias, os y) tulow->udo, kolano (zawias, os y) udo->podudzie
+    for strona, (ud, pd) in (('L', (UD_L, PD_L)), ('P', (UD_P, PD_P))):
+        ukl.dodajWiez(Polaczenie_Obr(TUL, ud, biodro_w_tulowiu(strona),
+                                     wektor(0, 0, -L_UD/2), *OSIE_NOGA))
+        akt['biodro_'+strona] = MomentWzgledny(TUL, ud, wektor(0, 1, 0), REF_Z,
+                                               K_BARK, 0.0, C_BARK)
+        ukl.dodajWiez(Polaczenie_Obr(ud, pd, wektor(0, 0, L_UD/2),
+                                     wektor(0, 0, -L_PD/2), *OSIE_NOGA))
+        akt['kolano_'+strona] = MomentWzgledny(ud, pd, wektor(0, 1, 0), REF_Z,
+                                               K_BARK, 0.0, C_BARK)
+
     for a in akt.values():
         ukl.dodajSileWewn(a)
     ukl.grawitacja = True
+
+    # cele bioder/kolan = katy w postawie neutralnej (punkt staly, bez zgadywania)
+    q_neu = q_startowe(YAW_TUL_G, {s: (orientacja(G[s]['dz'], G[s]['dx']),
+                                       G[s]['flex']) for s in ('R', 'L')})
+    for nazwa in ('biodro_L', 'biodro_P', 'kolano_L', 'kolano_P'):
+        akt[nazwa].theta_cel = akt[nazwa].kat(q_neu, N_CZLONOW)
     return ukl, akt
 
 
@@ -174,6 +221,20 @@ def q_startowe(yaw_tul, pozy):
         b = 3*N_CZLONOW
         q[b + 4*(ua-1):b + 4*(ua-1)+4] = p_ua
         q[b + 4*(fa-1):b + 4*(fa-1)+4] = p_fa
+
+    # nogi w postawie atletycznej (biodro lekko ugiete, kolano zgiete)
+    b = 3*N_CZLONOW
+    p_ud = mnoz_kwaterniony(p_tul, _p_udo())
+    p_pd = mnoz_kwaterniony(p_tul, _p_podudzie())
+    for strona, (ud, pd) in (('L', (UD_L, PD_L)), ('P', (UD_P, PD_P))):
+        biodro = np.array([0, 0, Z_TUL]) + Rt.dot(biodro_w_tulowiu(strona).ravel())
+        srodek_ud = biodro + _os_z(p_ud)*L_UD/2
+        kolano = biodro + _os_z(p_ud)*L_UD
+        srodek_pd = kolano + _os_z(p_pd)*L_PD/2
+        q[3*(ud-1):3*(ud-1)+3] = srodek_ud
+        q[3*(pd-1):3*(pd-1)+3] = srodek_pd
+        q[b + 4*(ud-1):b + 4*(ud-1)+4] = p_ud
+        q[b + 4*(pd-1):b + 4*(pd-1)+4] = p_pd
     return q
 
 
@@ -243,9 +304,11 @@ def eksportuj(klatki, co_ile=8, plik='web/dane_bokser.js'):
     dane = {
         'dt': DT*co_ile,
         'wymiary': {'ramie': L_UA, 'przedramie': L_FA,
-                    'tul_dol': TUL_DOL, 'tul_gora': TUL_GORA},
+                    'tul_dol': TUL_DOL, 'tul_gora': TUL_GORA,
+                    'udo': L_UD, 'podudzie': L_PD},
         'indeksy': {'tulow': TUL-1, 'ra_g': RA_G-1, 'ra_p': RA_P-1,
-                    'la_g': LA_G-1, 'la_p': LA_P-1},
+                    'la_g': LA_G-1, 'la_p': LA_P-1,
+                    'ud_L': UD_L-1, 'pd_L': PD_L-1, 'ud_P': UD_P-1, 'pd_P': PD_P-1},
         'klatki': dane_klatki,
     }
     katalog = os.path.dirname(os.path.abspath(plik))
