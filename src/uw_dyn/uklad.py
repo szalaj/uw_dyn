@@ -541,8 +541,34 @@ class Uklad:
         PS = self.Pstrona(q, dq)
         return np.linalg.solve(LS, PS).ravel()[0:7*self.N]
 
+    # polniejawny krok predkosci dla RATTLE: rozwiazuje
+    #   v_kon = v_pol + dt/2 * a(q, v_kon)
+    # jednym krokiem Newtona z jakobianem przyspieszenia po predkosci.
+    # Tanie, bo Lstrona (macierz KKT) nie zalezy od predkosci: faktoryzacja
+    # LU raz, a kolumny jakobianu to tanie solve na gotowej faktoryzacji.
+    # Sily tlumiace sa LINIOWE w predkosci -> ich (sztywny) wklad jest ujety
+    # dokladnie, co znosi ograniczenie stabilnosci jawnego kroku predkosci.
+    def _krok_predkosci_polniejawny(self, q, v_pol, dt):
+        N = self.N
+        n = 7*N + self.M + N
+        LS = self.Lstrona(q, v_pol)
+        lu = scipy.linalg.lu_factor(LS)
+        a0 = scipy.linalg.lu_solve(lu, self.Pstrona(q, v_pol).ravel())[0:7*N]
+
+        eps = 1e-7*max(1.0, np.abs(v_pol).max())
+        RHS = np.empty((n, 7*N))
+        for j in range(7*N):
+            vp = v_pol.copy()
+            vp[j] += eps
+            RHS[:, j] = self.Pstrona(q, vp).ravel()
+        A = (scipy.linalg.lu_solve(lu, RHS)[0:7*N, :] - a0[:, None])/eps  # da/dv
+
+        # Newton: (I - dt/2 A) dv = dt/2 a0 ; v_kon = v_pol + dv
+        dv = np.linalg.solve(np.eye(7*N) - 0.5*dt*A, 0.5*dt*a0)
+        return v_pol + dv
+
     # integracja typu RATTLE (Verlet predkosciowy z wiezami w kroku)
-    def sym3(self, y0, t0, tK, dt):
+    def sym3(self, y0, t0, tK, dt, polniejawne=False):
         """Symulacja integratorem typu RATTLE: Verlet predkosciowy, w ktorym
         wiezy sa rozwiazywane WEWNATRZ kroku, a nie doklejane po nim:
           1. v_pol = v + dt/2 * a(q, v)
@@ -558,8 +584,15 @@ class Uklad:
         ewaluacja przyspieszen na krok - przenoszona do nastepnego kroku jak
         w klasycznym Verlecie - plus dwie projekcje), a dokladnosc o rzedy
         wielkosci lepsza -> w praktyce mozna uzyc znacznie wiekszego dt.
-        Sufit dt dla sil sztywnych (kontakt, mocne sprezyny) pozostaje
-        podobny jak w sym2 (obie metody jawne). y0 nie jest modyfikowane.
+
+        polniejawne=True: krok predkosci (3) liczony PoLNIEJAWNIE (jeden krok
+        Newtona z jakobianem przyspieszenia po predkosci) zamiast iteracja
+        punktu stalego. Znosi ograniczenie stabilnosci przy sztywnym TLUMIENIU
+        na lekkich czlonach (c/J*dt/2 > 1), gdzie jawny sym3 wybucha. Koszt
+        kroku rosnie (budowa jakobianu: 7N ewaluacji sil), ale pozwala na
+        znacznie wiekszy dt, gdy o suficie decyduje tlumienie (pelna sylwetka,
+        mocne serwa). Dla sil sztywnych sprezystych (nie tlumiacych) sufit dt
+        nadal wyznacza jawny krok polozen. y0 nie jest modyfikowane.
         Wyniki w self.Y."""
         N = self.N
         self.alfa = 0
@@ -585,10 +618,14 @@ class Uklad:
                     'zmniejsz krok dt albo sprawdz model')
 
             q[:] = self.projekcja_polozen(q)          # SHAKE (polozenia)
-            # iteracja punktu stalego na predkosci koncowej (rzad 2)
-            v_kon = v_pol + 0.5*dt*a
-            a = self._przyspieszenie(q, v_kon)
-            v_kon = v_pol + 0.5*dt*a
+            if polniejawne:
+                v_kon = self._krok_predkosci_polniejawny(q, v_pol, dt)
+                a = self._przyspieszenie(q, v_kon)     # a do nastepnego kroku
+            else:
+                # iteracja punktu stalego na predkosci koncowej (rzad 2)
+                v_kon = v_pol + 0.5*dt*a
+                a = self._przyspieszenie(q, v_kon)
+                v_kon = v_pol + 0.5*dt*a
             dq[:] = self.projekcja_predkosci(q, v_kon)  # RATTLE (predkosci)
 
             wyniki.append(y.copy())

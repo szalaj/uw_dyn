@@ -81,11 +81,30 @@ powielanie kodu i pozwoli na zdarzenia (patrz punkt 4).
      dokładnie 4.00 przy dt/2), więzy ~1e-13, energia wahadła/łańcucha
      500–740× dokładniejsza niż sym2 przy tym samym koszcie kroku; przy
      dt 10× większym nadal dokładniejszy i ~9× szybszy. Dron przechodzi
-     pełną misję na sym3. OGRANICZENIE: przy bardzo sztywnym tłumieniu
-     na lekkich członach (figura: c/J·dt/2 > 1) iteracja punktu stałego
-     nie zbiega i sym3 wybucha tam, gdzie sym2 (półjawny w prędkości)
-     przeżywa — dla pełnej sylwetki z kontaktem zostaje sym2. Docelowe
-     rozwiązanie: tłumienie półniejawne w kroku prędkości.
+     pełną misję na sym3. Słabym punktem jawnego sym3 było sztywne
+     TŁUMIENIE (iteracja punktu stałego na prędkości dywerguje przy
+     `c/m·dt/2 > 1`) — patrz niżej.
+  2b. Tłumienie półniejawne — **ZROBIONE 2026-07-06 jako `sym3(...,
+     polniejawne=True)`**: krok prędkości liczony jednym krokiem Newtona
+     z jakobianem przyspieszenia po prędkości (`da/dv`). Ponieważ `Lstrona`
+     (macierz KKT) nie zależy od prędkości, jakobian liczy się tanio: jedna
+     faktoryzacja LU, a kolumny to solve na gotowej faktoryzacji. Siły
+     tłumiące są liniowe w prędkości, więc ich (sztywny) wkład jest ujęty
+     dokładnie → **bezwarunkowa stabilność w tłumieniu**. Zweryfikowane:
+     układ z `c/m=1000` (próg jawny dt=2m/c) jawny sym3 wybucha przy
+     dt≥4e-3, a półniejawny wygasza prędkość poprawnie przy każdym dt;
+     rząd 2 zachowany (stosunek błędu 4.00); figura (84 DOF) biegnie na
+     dt=2e-3 (2× sufit sym2) z mniejszym dryfem. OGRANICZENIE: koszt kroku
+     rośnie (budowa gęstego jakobianu = 7N ewaluacji sił), więc netto
+     wygrywa tylko przy małym/średnim N. Dla figury z kontaktem sym2 przy
+     dt=1e-3 jest wciąż szybszy zegarowo (8 s vs 49 s na 0.2 s ruchu),
+     mimo że półniejawny sym3 jest stabilniejszy i dokładniejszy na krok —
+     **dla pełnej sylwetki zostaje więc sym2**. Dalsze przyspieszenie
+     figury wymaga: (a) analitycznej/rzadkiej macierzy tłumienia (tłumiki
+     są lokalne, więc jakobian jest rzadki — dziś liczony gęsto), ORAZ
+     (b) niejawnego traktowania sztywnych SPRĘŻYN kontaktu (dziś jawnych,
+     osobny sufit dt). Półniejawny sym3 domyka więc tłumienie, ale nie
+     sprężyny.
   3. integratory na grupie Liego (SO(3)): kwaternion aktualizowany
      mnożeniem przez kwaternion przyrostowy, norma zachowana z definicji,
      znika też problem jakobianów przy nieunormowanych kwaternionach.
