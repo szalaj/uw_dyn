@@ -4,6 +4,30 @@ Stan na 2026-07-05, po restrukturyzacji pakietu i wprowadzeniu stabilizacji
 rzutowaniem. Analiza pod kątem trzech przykładów kanonicznych (przysiad,
 robot kroczący/mini-piesek, kwadrokopter), które wyznaczają priorytety.
 
+## 0. Audyt matematyczny (2026-07-06): sformułowanie ZWERYFIKOWANE
+
+Numeryczna weryfikacja poprawności (utrwalona w `tests/test_matematyka.py`):
+
+1. **Jakobiany więzów** = pochodne kierunkowe Φ wzdłuż wszystkich kierunków
+   stycznych (dp ⊥ p), dla wszystkich 9 typów par (gałęzie i=0 oraz i≠0),
+   zgodność ~1e-9. Wzdłuż kierunku radialnego kwaternionu są (udokumentowanie)
+   niedokładne, stąd normalizacja w iteracjach Newtona.
+2. **Człony gamma** (prawa strona przyspieszeń): γ == −(dJ/dt)·v dla losowych
+   stanów, zgodność ~1e-9 dla wszystkich par.
+3. **Siły potencjalne**: Q == −∂V/∂q wzdłuż kierunków stycznych (sprężyna,
+   staw kuliste PD, ograniczniki, kontakt); zawiasy egzaktne na rozmaitości
+   przegubu (poza nią wzory kątowe z definicji się rozjeżdżają — nieistotne,
+   bo więz trzyma układ na rozmaitości).
+4. **Bryła swobodna** (asymetryczny tensor, oś pośrednia, test Dzhanibekova):
+   kręt w układzie świata zachowany, a błąd maleje DOKŁADNIE liniowo z dt
+   (stosunki 2.00 przy połowieniu kroku) → jedyne źródło błędu to rząd 1
+   półjawnego Eulera, nie sformułowanie równań (człony 4GᵀJG, 8ĠᵀJĠp są
+   egzaktne).
+
+Wniosek: matematyka biblioteki jest poprawna; głównym kierunkiem poprawy
+pozostaje RZĄD i koszt integracji (punkt 3 poniżej: RATTLE / grupa Liego),
+nie poprawność.
+
 ## 1. Siły: największa luka funkcjonalna
 
 Obecnie biblioteka zna tylko trzy rodzaje sił: grawitację, stałą siłę lub

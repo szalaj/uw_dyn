@@ -48,10 +48,12 @@ MAKS_POCHYLENIE = 0.45          # [rad]
 WIRNIKI = [wektor(RAMIE, 0, 0), wektor(-RAMIE, 0, 0),
            wektor(0, RAMIE, 0), wektor(0, -RAMIE, 0)]
 
-# misja: punkty (x, y, z) i promien zaliczenia
-MISJA = [(0.0, 0.0, 2.0), (4.0, 0.0, 2.2), (4.0, 0.0, 1.4)]
+# misja: punkty (x, y, z) i promien zaliczenia; przelot tam i z powrotem
+# z ladunkiem na linie (wahadlo szarpie dronem w obu kierunkach)
+MISJA = [(0.0, 0.0, 2.0), (4.0, 0.0, 2.2), (4.0, 0.0, 1.4),
+         (0.0, 0.0, 2.0), (0.0, 0.0, 1.4)]
 PROMIEN = 0.35
-CZAS_MAKS = 16.0
+CZAS_MAKS = 24.0
 
 
 def zbuduj():
@@ -175,6 +177,16 @@ if __name__ == '__main__':
     klatki, nr_celu, t, q, dq = symuluj()
     print(f'zaliczone punkty misji: {nr_celu}/{len(MISJA)} w {t:.1f} s')
     print(f'pozycja koncowa drona: {q[0:3].round(3)}, ladunku: {q[3:6].round(3)}')
+
+    # wahanie ladunku: kat liny od pionu (sprzezenie wieloczlonowe dron-lina-ladunek)
+    katy = []
+    for kl in klatki:
+        d = np.array(kl['lad_r']) - np.array(kl['dron_r'])
+        n = np.linalg.norm(d)
+        if n > 0.5*DL_LINY:     # lina napieta
+            katy.append(np.degrees(np.arccos(np.clip(-d[2]/n, -1, 1))))
+    print(f'maks. wychylenie liny od pionu: {max(katy):.1f} st. '
+          f'(koncowe: {katy[-1]:.1f} st.)')
     if nr_celu < len(MISJA):
         raise SystemExit('misja niezaliczona: dostroic regulator')
 
