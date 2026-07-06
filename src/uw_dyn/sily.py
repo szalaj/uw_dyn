@@ -237,6 +237,19 @@ class SilaUderzenia:
         self.polowa_wys = polowa_wys
         self.k = k
         self.c = c
+        self.zeruj_metryki()
+
+    def zeruj_metryki(self):
+        """Zeruje liczniki metryk uderzenia (przed symulacja)."""
+        self.F_szczyt = 0.0        # szczytowa sila normalna kontaktu [N]
+        self.suma_Fn = 0.0         # suma sil po wywolaniach (impuls = suma*dt)
+        self.n_kontaktu = 0        # liczba wywolan z kontaktem
+
+    def impuls(self, dt):
+        """Impuls uderzenia [N s]: calka sily po czasie. Wazne dla sym2
+        (jedno wywolanie sila() na krok dt); dla sym3 przeskaluj liczba
+        wywolan na krok."""
+        return self.suma_Fn*dt
 
     def _geometria(self, q, N):
         """Zwraca (piesc, P_na_osi, normalna_jedn, wnikanie, dane...) albo None."""
@@ -282,6 +295,12 @@ class SilaUderzenia:
 
         Fn = max(0.0, self.k*wnikanie - self.c*v_zbl)
         F = Fn*n                                # sila na piesc (odpychajaca)
+
+        # metryki uderzenia (szczyt i suma do impulsu)
+        if Fn > 0.0:
+            self.F_szczyt = max(self.F_szczyt, Fn)
+            self.suma_Fn += Fn
+            self.n_kontaktu += 1
 
         Qr_i = F
         Qp_i = 2*Gi.transpose().dot(skew(self.s_i).dot(Ri.transpose().dot(F)))

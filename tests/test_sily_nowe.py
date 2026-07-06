@@ -216,3 +216,33 @@ def test_uderzenie_wprawia_worek_w_ruch():
 
     assert scena(6.0) > 0.03          # uderzony worek sie wychyla
     assert scena(0.0) < 5e-3          # bez uderzenia wisi (prawie) nieruchomo
+
+
+def test_uderzenie_metryki_sila_i_impuls():
+    """Metryki SilaUderzenia: po uderzeniu zapisana jest szczytowa sila i
+    impuls; mocniejsze (szybsze) uderzenie daje wiekszy szczyt i impuls."""
+    def uderz(v):
+        ukl = Uklad()
+        ukl.dodajCzlon(Czlon(1, 1.0, np.diag([0.05, 0.05, 0.05])))
+        ukl.dodajCzlon(Czlon(2, 5.0, np.diag([0.1, 0.1, 0.02])))
+        ukl.dodajWiez(Para_Sferyczna(0, 2, wektor(0.3, 0, 1.4), wektor(0, 0, 0.4)))
+        kontakt = SilaUderzenia(1, wektor(0, 0, 0), 2, promien=0.2,
+                                polowa_wys=0.4, k=2.0e4, c=50.0)
+        ukl.dodajSileWewn(kontakt)
+        ukl.grawitacja = True
+        q0 = np.zeros(14)
+        q0[0:3] = [0.05, 0, 1.0]
+        q0[3:6] = [0.3, 0, 1.0]
+        q0[6] = 1.0
+        q0[10] = 1.0
+        dq0 = np.zeros(14)
+        dq0[0] = v
+        dt = 5e-4
+        ukl.sym2(np.concatenate((q0, dq0)), 0.0, 0.6, dt)
+        return kontakt.F_szczyt, kontakt.impuls(dt)
+
+    F_slaby, I_slaby = uderz(2.0)
+    F_mocny, I_mocny = uderz(6.0)
+    assert F_slaby > 0 and I_slaby > 0            # metryki zapisane
+    assert F_mocny > F_slaby                       # szybsze -> wieksza sila
+    assert I_mocny > I_slaby * 1.5                  # szybsze -> wiekszy impuls

@@ -63,9 +63,9 @@ N_CZLONOW = 10
 
 # ----- worek bokserski (wahadlo z masa, podwieszone stawem kulistym) -----
 M_WOREK = 12.0                   # masa worka [kg] (lekki worek treningowy)
-R_WOREK = 0.15                   # promien worka [m]
+R_WOREK = 0.22                   # promien worka [m] (szeroki, by hak i kopniecie sie zmiescily)
 H_WOREK = 0.90                   # wysokosc worka [m]
-X_WOREK = 0.55                   # odleglosc worka przed bokserem (os x) [m]
+X_WOREK = 0.50                   # odleglosc worka przed bokserem (os x) [m]
 Z_ZACZEP = 1.55                  # wysokosc zaczepienia liny (staw kulisty) [m]
 Z_WOREK = Z_ZACZEP - H_WOREK/2   # srodek masy worka w spoczynku
 PROM_KONTAKT = R_WOREK + PROM    # promien kontaktu piesc/stopa - worek
@@ -230,10 +230,14 @@ def zbuduj():
     ukl.dodajWiez(Para_Sferyczna(0, WOREK, wektor(X_WOREK, 0, Z_ZACZEP),
                                  wektor(0, 0, H_WOREK/2)))    # zaczep u gory worka
     # kontakt penalty: piesc (przedramie P) i stopa (podudzie P) uderzaja w worek
-    ukl.dodajSileWewn(SilaUderzenia(RA_P, wektor(0, 0, L_FA/2), WOREK,
-                                    PROM_KONTAKT, H_WOREK/2))
-    ukl.dodajSileWewn(SilaUderzenia(PD_P, wektor(0, 0, L_PD/2), WOREK,
-                                    PROM_KONTAKT, H_WOREK/2))
+    kontakty = {
+        'piesc': SilaUderzenia(RA_P, wektor(0, 0, L_FA/2), WOREK,
+                               PROM_KONTAKT, H_WOREK/2),
+        'stopa': SilaUderzenia(PD_P, wektor(0, 0, L_PD/2), WOREK,
+                               PROM_KONTAKT, H_WOREK/2),
+    }
+    for k in kontakty.values():
+        ukl.dodajSileWewn(k)
     ukl.grawitacja = True
 
     # cele bioder/kolan = katy w postawie neutralnej (punkt staly, bez zgadywania)
@@ -241,7 +245,7 @@ def zbuduj():
                                        G[s]['flex']) for s in ('R', 'L')})
     for nazwa in ('biodro_L', 'biodro_P', 'kolano_L', 'kolano_P'):
         akt[nazwa].theta_cel = akt[nazwa].kat(q_neu, N_CZLONOW)
-    return ukl, akt
+    return ukl, akt, kontakty
 
 
 def q_startowe(yaw_tul, pozy):
@@ -369,7 +373,7 @@ def piesc_prawa(q):
 
 
 def symuluj():
-    ukl, akt = zbuduj()
+    ukl, akt, kontakty = zbuduj()
     pozy_g = {s: (orientacja(G[s]['dz'], G[s]['dx']), G[s]['flex']) for s in ('R', 'L')}
     q = ukl.projekcja_polozen(q_startowe(YAW_TUL_G, pozy_g))
     dq = np.zeros(7*N_CZLONOW)
@@ -390,10 +394,10 @@ def symuluj():
         q = Y[-1][0:7*N_CZLONOW].copy()
         dq = Y[-1][7*N_CZLONOW:14*N_CZLONOW].copy()
         t += SEGMENT
-    return ukl, klatki
+    return ukl, klatki, kontakty
 
 
-def eksportuj(klatki, co_ile=8, plik='web/dane_bokser.js'):
+def eksportuj(klatki, kontakty=None, co_ile=8, plik='web/dane_bokser.js'):
     dane_klatki = []
     for q in klatki[::co_ile]:
         czlony = []
@@ -416,6 +420,10 @@ def eksportuj(klatki, co_ile=8, plik='web/dane_bokser.js'):
         'worek': {'r': R_WOREK, 'h': H_WOREK, 'zaczep': [X_WOREK, 0, Z_ZACZEP]},
         'klatki': dane_klatki,
     }
+    if kontakty is not None:
+        dane['metryki'] = {
+            nazwa: {'F': round(k.F_szczyt, 0), 'imp': round(k.impuls(DT), 2)}
+            for nazwa, k in kontakty.items()}
     katalog = os.path.dirname(os.path.abspath(plik))
     os.makedirs(katalog, exist_ok=True)
     with open(plik, 'w') as f:
@@ -424,7 +432,7 @@ def eksportuj(klatki, co_ile=8, plik='web/dane_bokser.js'):
 
 
 if __name__ == '__main__':
-    ukl, klatki = symuluj()
+    ukl, klatki, kontakty = symuluj()
     piesci = np.array([piesc_prawa(q) for q in klatki])
     predk = np.linalg.norm(np.diff(piesci, axis=0), axis=1)/DT
     i_g = int(round((T_GARDA*0.5)/DT))
@@ -445,8 +453,18 @@ if __name__ == '__main__':
     wych = np.hypot(worek[:, 0] - X_WOREK, worek[:, 1])
     print('worek: maks. wychylenie CoM od spoczynku %.3f m (koncowe %.3f m)' %
           (wych.max(), wych[-1]))
+
+    # metryki uderzenia w worek (z sil kontaktu): szczytowa sila i impuls
+    print('metryki uderzenia (kontakt z workiem):')
+    for nazwa, cios in (('sierpowy (piesc)', 'piesc'), ('front kick (stopa)', 'stopa')):
+        k = kontakty[cios]
+        if k.n_kontaktu:
+            print('  %-18s sila szczytowa %6.0f N, impuls %5.2f N s' %
+                  (nazwa, k.F_szczyt, k.impuls(DT)))
+        else:
+            print('  %-18s brak kontaktu z workiem' % nazwa)
     print('brak NaN:', not np.isnan(np.array(klatki)).any())
 
     sciezka = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            '..', 'web', 'dane_bokser.js')
-    eksportuj(klatki, plik=os.path.normpath(sciezka))
+    eksportuj(klatki, kontakty, plik=os.path.normpath(sciezka))

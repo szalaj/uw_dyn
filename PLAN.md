@@ -287,8 +287,10 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
       worek bokserski w `bokser.py` to prawdziwe ciało (wahadło z masą na stawie
       kulistym), sierpowy i front kick trafiają w niego i wprawiają w wahnięcie
       (CoM worka do ~0.19 m). Wizualizacja: worek + lina w `web/bokser.html`.
-- [ ] Metryki uderzenia w worek: siła/impuls z `SilaUderzenia` w chwili
-      kontaktu (dziś liczona tylko prędkość pięści i wychylenie worka).
+- [x] Metryki uderzenia w worek — **ZROBIONE 2026-07-06**: `SilaUderzenia`
+      liczy szczytową siłę kontaktu (`F_szczyt`) i impuls (`impuls(dt)`);
+      w `bokser.py` raportowane osobno dla sierpowego i front kicku
+      (np. kick ~875 N, impuls ~23 N·s), wyświetlane też w `web/bokser.html`.
 - [ ] Metryki ciosu: prędkość i energia pięści w chwili kontaktu, impuls,
       moment obrotowy przenoszony na cel. Częściowo już liczone w `bokser.py`
       (prędkość pięści).
