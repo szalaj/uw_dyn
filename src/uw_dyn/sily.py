@@ -212,6 +212,84 @@ class SilaKontaktu:
         return Qr_i, Qp_i, Qr_j, Qp_j
 
 
+class SilaUderzenia:
+    """Kontakt bryla-bryla (penalty): punkt ciala i uderza w cialo j
+    modelowane jako KAPSULA (odcinek wzdluz lokalnej osi z, promien).
+
+    Gdy punkt (np. piesc na przedramieniu) wnika w kapsule (np. worek
+    bokserski): sila normalna N = max(0, k*wnikanie - c*predkosc_zblizania)
+    wzdluz normalnej od osi kapsuly do punktu. Dziala na oba ciala z
+    zachowaniem pedu; na cialo j (worek) zaczepiona w punkcie kontaktu, wiec
+    generuje wahniecie i obrot. Zamienia trafienie w prawdziwe przekazanie
+    pedu wahadlu z masa.
+
+    czlon_i, s_i: cialo uderzajace i punkt uderzenia w jego ukladzie;
+    czlon_j: cialo-worek (kapsula wzdluz lokalnej z, srodek w COM);
+    promien = promien worka + promien piesci; polowa_wys: polowa dlugosci
+    rdzenia kapsuly; k, c: sztywnosc i tlumienie kontaktu."""
+
+    def __init__(self, czlon_i, s_i, czlon_j, promien, polowa_wys,
+                 k=3.0e4, c=150.0):
+        self.i = czlon_i
+        self.j = czlon_j
+        self.s_i = np.asarray(s_i, float).reshape(3, 1)
+        self.promien = promien
+        self.polowa_wys = polowa_wys
+        self.k = k
+        self.c = c
+
+    def _geometria(self, q, N):
+        """Zwraca (piesc, P_na_osi, normalna_jedn, wnikanie, dane...) albo None."""
+        ri, rj = r_i(self.i, q), r_i(self.j, q)
+        pi_, pj = p_i(self.i, q, N), p_i(self.j, q, N)
+        Ri, Rj = R(pi_), R(pj)
+        piesc = ri + Ri.dot(self.s_i)
+        os_j = Rj[:, 2:3]                       # lokalna z worka (swiat)
+        # najblizszy punkt odcinka [COM - h*os, COM + h*os] do piesci
+        t = (piesc - rj).T.dot(os_j).item()
+        t = max(-self.polowa_wys, min(self.polowa_wys, t))
+        P = rj + t*os_j                         # punkt na osi kapsuly
+        d = piesc - P
+        dist = float(np.linalg.norm(d))
+        wnikanie = self.promien - dist
+        return piesc, P, d, dist, wnikanie, Ri, Rj, pi_, pj
+
+    def energia_potencjalna(self, q, N):
+        _, _, _, _, wnikanie, *_ = self._geometria(q, N)
+        if wnikanie <= 0:
+            return 0.0
+        return 0.5*self.k*wnikanie**2
+
+    def sila(self, q, dq, N):
+        Qr_i = np.zeros((3, 1))
+        Qp_i = np.zeros((4, 1))
+        Qr_j = np.zeros((3, 1))
+        Qp_j = np.zeros((4, 1))
+
+        piesc, P, d, dist, wnikanie, Ri, Rj, pi_, pj = self._geometria(q, N)
+        if wnikanie <= 0 or dist < 1e-9:
+            return Qr_i, Qp_i, Qr_j, Qp_j
+        n = d/dist                              # od osi worka do piesci (3,1)
+
+        # predkosc punktu uderzenia (cialo i) i punktu kontaktu (cialo j)
+        Gi, Gj = G(pi_), G(pj)
+        om_i = 2*Gi.dot(dp_i(self.i, dq, N))
+        om_j = 2*Gj.dot(dp_i(self.j, dq, N))
+        v_i = dr_i(self.i, dq) + Ri.dot(skew(om_i)).dot(self.s_i)
+        s_j = Rj.transpose().dot(P - r_i(self.j, q))   # punkt kontaktu w ukl. j
+        v_j = dr_i(self.j, dq) + Rj.dot(skew(om_j)).dot(s_j)
+        v_zbl = (v_i - v_j).T.dot(n).item()     # predkosc zblizania wzdluz n
+
+        Fn = max(0.0, self.k*wnikanie - self.c*v_zbl)
+        F = Fn*n                                # sila na piesc (odpychajaca)
+
+        Qr_i = F
+        Qp_i = 2*Gi.transpose().dot(skew(self.s_i).dot(Ri.transpose().dot(F)))
+        Qr_j = -F                               # reakcja na worek
+        Qp_j = 2*Gj.transpose().dot(skew(s_j).dot(Rj.transpose().dot(-F)))
+        return Qr_i, Qp_i, Qr_j, Qp_j
+
+
 class MomentWzgledny:
     """Aktuator obrotowy (sprezyna-tlumik) w przegubie miedzy czlonami i, j
     wokol osi obrotu. Moment tau = k*(theta_cel - theta) - c*dtheta jest

@@ -30,11 +30,12 @@
 <body>
 <div id="scena"></div>
 <div id="panel">
-  <h1>Kickboxing: walka z cieniem</h1>
+  <h1>Kickboxing na worku</h1>
   <p>Model 3D: barki i biodra to stawy kuliste, łokcie i kolana to zawiasy.
      Sekwencja: garda → prawy sierpowy (łukiem w przód, moc ze skrętu
      korpusu) → front kick tylną nogą (kolano w górę, wyprost stopą w przód)
-     → powrót do postawy.</p>
+     → powrót do postawy. Worek to prawdziwe ciało (wahadło z masą na linie);
+     ciosy trafiają w niego przez kontakt bryła-bryła i wprawiają go w ruch.</p>
   <p>Prędkość pięści: <span id="vmax">0.0 m/s</span></p>
   <p>Mysz: obracanie, kółko: przybliżenie.</p>
 </div>
@@ -160,21 +161,24 @@ function stopa() {
 }
 const stopa_L = stopa(), stopa_P = stopa();
 
-// cien przeciwnika (translucentna sylwetka z przodu)
-const cien = new THREE.Group();
-const cienTul = new THREE.Mesh(
-  new THREE.CapsuleGeometry(0.17, 0.6, 6, 12),
-  new THREE.MeshStandardMaterial({ color: 0x05070a, transparent: true, opacity: 0.5 }));
-cienTul.rotation.x = Math.PI/2;
-cienTul.position.set(0, 0, 1.1);
-cien.add(cienTul);
-const cienGlowa = new THREE.Mesh(
-  new THREE.SphereGeometry(0.13, 16, 12),
-  new THREE.MeshStandardMaterial({ color: 0x05070a, transparent: true, opacity: 0.5 }));
-cienGlowa.position.set(0, 0, 1.4);
-cien.add(cienGlowa);
-cien.position.set(0.40, 0.14, 0);   // tam, gdzie laduje sierpowy (piesc ~0.34,0.14,1.35)
-swiat.add(cien);
+// worek bokserski: prawdziwe cialo (wahadlo z masa) podwieszone na linie
+const WK = DANE.worek;
+const worek = new THREE.Mesh(
+  new THREE.CylinderGeometry(WK.r, WK.r, WK.h, 20, 1),
+  new THREE.MeshStandardMaterial({ color: 0x8a5a2b, roughness: 0.85 }));
+worek.rotation.x = Math.PI/2;        // walec three.js (os y) -> lokalna z
+worek.castShadow = true;
+const worekGrupa = new THREE.Group();
+worekGrupa.add(worek);
+swiat.add(worekGrupa);
+// zaczep i lina (aktualizowana co klatke)
+const zaczep = new THREE.Vector3(...WK.zaczep);
+const linaGeo = new THREE.BufferGeometry().setFromPoints(
+  [zaczep, new THREE.Vector3(WK.zaczep[0], 0, WK.zaczep[2] - WK.h/2)]);
+const lina = new THREE.Line(linaGeo,
+  new THREE.LineBasicMaterial({ color: 0x555555 }));
+swiat.add(lina);
+const OSZ_W = new THREE.Vector3(0, 0, 1);
 
 // czlony ramion sa pretami wzdluz lokalnej z; piesc = koniec +z
 const OSZ = new THREE.Vector3(0, 0, 1);
@@ -231,6 +235,15 @@ function ustawKlatke(nr) {
   ustawX(pod_P, kl[I.pd_P].r, kl[I.pd_P].p, W.podudzie);
   stopa_L.position.copy(koniecX(kl[I.pd_L].r, kl[I.pd_L].p, W.podudzie));
   stopa_P.position.copy(koniecX(kl[I.pd_P].r, kl[I.pd_P].p, W.podudzie));
+
+  // worek: pozycja + orientacja z fizyki; lina od zaczepu do gornego konca
+  const wk = kl[I.worek];
+  worekGrupa.position.set(...wk.r);
+  const qw = new THREE.Quaternion(wk.p[1], wk.p[2], wk.p[3], wk.p[0]);
+  worekGrupa.quaternion.copy(qw);
+  const gora = new THREE.Vector3(...wk.r).add(
+    OSZ_W.clone().applyQuaternion(qw).multiplyScalar(WK.h/2));
+  lina.geometry.setFromPoints([zaczep, gora]);
 
   poleV.textContent = predkoscR(nr).toFixed(1) + ' m/s';
   poleCzas.textContent = (nr * dt).toFixed(2) + ' s';

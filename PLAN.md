@@ -282,8 +282,13 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
 
 ### Etap C: interakcja i pomiary
 
-- [ ] Trafienie: kontakt pięści/stopy z celem (workiem, tarczą, przeciwnikiem)
-      przez `SilaKontaktu`/`SilaWPunkcie`; pomiar siły i pędu uderzenia.
+- [x] Trafienie: kontakt pięści/stopy z celem — **ZROBIONE 2026-07-06**:
+      nowa siła `SilaUderzenia` (kontakt penalty bryła-bryła: punkt vs kapsuła),
+      worek bokserski w `bokser.py` to prawdziwe ciało (wahadło z masą na stawie
+      kulistym), sierpowy i front kick trafiają w niego i wprawiają w wahnięcie
+      (CoM worka do ~0.19 m). Wizualizacja: worek + lina w `web/bokser.html`.
+- [ ] Metryki uderzenia w worek: siła/impuls z `SilaUderzenia` w chwili
+      kontaktu (dziś liczona tylko prędkość pięści i wychylenie worka).
 - [ ] Metryki ciosu: prędkość i energia pięści w chwili kontaktu, impuls,
       moment obrotowy przenoszony na cel. Częściowo już liczone w `bokser.py`
       (prędkość pięści).
@@ -294,7 +299,8 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
 - napędzany staw kulisty (3 DOF) — Etap A, najważniejsze;
 - ograniczniki zakresu ruchu — Etap A;
 - aktuator momentu z limitem — Etap A/B;
-- kontakt bryła–bryła (nie tylko punkt–podłoże) do trafień — Etap C;
+- kontakt bryła–bryła (nie tylko punkt–podłoże) do trafień — Etap C, ZROBIONE
+  (`SilaUderzenia`: punkt vs kapsuła);
 - regulator postawy/balansu — Etap B (najtrudniejsze numerycznie).
 
 Powiązane: te rozszerzenia częściowo pokrywają się z listą w `docs/ULEPSZENIA.md`

@@ -4,8 +4,9 @@
 import numpy as np
 import pytest
 
-from uw_dyn import (Uklad, Czlon, Polaczenie_Obr, SilaWPunkcie, SilaKontaktu,
-                    SilaWewnProst, MomentWzgledny, wektor, u2p)
+from uw_dyn import (Uklad, Czlon, Polaczenie_Obr, Para_Sferyczna, SilaWPunkcie,
+                    SilaKontaktu, SilaUderzenia, SilaWewnProst, MomentWzgledny,
+                    wektor, u2p)
 from conftest import GRAWITACJA
 
 
@@ -140,3 +141,78 @@ def test_lina_luzna_nie_pcha():
     ukl2.sym2(y02, 0.0, 3.0, 0.001)
     z_rownowagi = -(l0 + masa * GRAWITACJA / k)
     assert ukl2.Y[-1][2] == pytest.approx(z_rownowagi, abs=1e-3)
+
+
+def test_uderzenie_rownowaga_sil_i_potencjal():
+    """SilaUderzenia (kontakt brya-brya): sila na oba ciaa jest rowna i
+    przeciwna, a jest gradientem energii penalty (Q = -dV/dq stycznie)."""
+    N, EPS = 2, 1e-6
+    rng = np.random.default_rng(1)
+    s = SilaUderzenia(1, wektor(0.1, 0, 0), 2, promien=0.3, polowa_wys=0.2,
+                      k=1.0e4, c=0.0)
+
+    def losq():
+        q = np.zeros(7 * N)
+        q[0:3 * N] = rng.normal(size=3 * N) * 0.1
+        for k in range(N):
+            p = rng.normal(size=4)
+            q[3 * N + 4 * k:3 * N + 4 * k + 4] = p / np.linalg.norm(p)
+        q[0:3] = q[3:6] + rng.normal(size=3) * 0.05     # wymus penetracje
+        return q
+
+    maxF, maxV, traf = 0.0, 0.0, 0
+    for _ in range(40):
+        q = losq()
+        Qr_i, Qp_i, Qr_j, Qp_j = s.sila(q, np.zeros(7 * N), N)
+        maxF = max(maxF, np.linalg.norm(np.ravel(Qr_i) + np.ravel(Qr_j)))
+        if s.energia_potencjalna(q, N) > 0:
+            traf += 1
+            Q = np.zeros(7 * N)
+            Q[0:3] = np.ravel(Qr_i)
+            Q[3 * N:3 * N + 4] = np.ravel(Qp_i)
+            Q[3:6] = np.ravel(Qr_j)
+            Q[3 * N + 4:3 * N + 8] = np.ravel(Qp_j)
+            for _ in range(4):
+                d = np.zeros(7 * N)
+                d[0:3 * N] = rng.normal(size=3 * N)
+                for k in range(N):
+                    p = q[3 * N + 4 * k:3 * N + 4 * k + 4]
+                    dp = rng.normal(size=4)
+                    dp -= p * np.dot(p, dp)
+                    d[3 * N + 4 * k:3 * N + 4 * k + 4] = dp
+                d /= np.linalg.norm(d)
+                dV = (s.energia_potencjalna(q + EPS * d, N)
+                      - s.energia_potencjalna(q - EPS * d, N)) / (2 * EPS)
+                maxV = max(maxV, abs(dV + Q @ d))
+    assert traf > 20                 # wiekszosc prob to trafienia
+    assert maxF < 1e-9               # rownowaga sil (F + (-F) = 0)
+    assert maxV < 1e-4               # Q = -dV/dq
+
+
+def test_uderzenie_wprawia_worek_w_ruch():
+    """Worek jako wahadlo (staw kulisty) uderzony poruszajacym sie cialem
+    wychyla sie; w spoczynku (bez uderzenia) wisi nieruchomo."""
+    def scena(v_uderzenia):
+        ukl = Uklad()
+        ukl.dodajCzlon(Czlon(1, 1.0, np.diag([0.05, 0.05, 0.05])))   # piesc
+        ukl.dodajCzlon(Czlon(2, 5.0, np.diag([0.1, 0.1, 0.02])))     # worek
+        # worek: wahadlo na stawie kulistym, zaczep nad workiem
+        ukl.dodajWiez(Para_Sferyczna(0, 2, wektor(0.3, 0, 1.4),
+                                     wektor(0, 0, 0.4)))
+        ukl.dodajSileWewn(SilaUderzenia(1, wektor(0, 0, 0), 2,
+                                        promien=0.2, polowa_wys=0.4,
+                                        k=2.0e4, c=50.0))
+        ukl.grawitacja = True
+        q0 = np.zeros(14)
+        q0[0:3] = [0.05, 0, 1.0]      # piesc tuz przed workiem
+        q0[3:6] = [0.3, 0, 1.0]       # worek (COM pod zaczepem)
+        q0[6] = 1.0
+        q0[10] = 1.0
+        dq0 = np.zeros(14)
+        dq0[0] = v_uderzenia          # piesc leci w worek (+x)
+        ukl.sym2(np.concatenate((q0, dq0)), 0.0, 0.6, 5e-4)
+        worek = ukl.Y[:, 3:6]
+        return np.hypot(worek[:, 0] - 0.3, worek[:, 1]).max()
+
+    assert scena(6.0) > 0.03          # uderzony worek sie wychyla
+    assert scena(0.0) < 5e-3          # bez uderzenia wisi (prawie) nieruchomo

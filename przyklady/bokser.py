@@ -1,5 +1,11 @@
 # -*- coding: utf-8 -*-
-# Przyklad: kickboxing - walka z cieniem. Prawy sierpowy (model 3D).
+# Przyklad: kickboxing na worku. Prawy sierpowy + front kick (model 3D).
+#
+# Worek bokserski jest PRAWDZIWYM CIALEM: wahadlem z masa podwieszonym
+# stawem kulistym do zaczepu. Ciosy trafiaja w niego przez kontakt penalty
+# bryla-bryla (SilaUderzenia: punkt piesci/stopy vs kapsula worka), wiec
+# uderzenie przekazuje ped i wprawia worek w wahniecie - nie jest to juz
+# walka z cieniem, lecz realne trafianie w cel z bezwladnoscia.
 #
 # Wersja anatomiczna na stawach kulistych (Etap A): barki to napedzane stawy
 # kuliste 3 DOF (Para_Sferyczna + MomentSferyczny), lokcie to zawiasy 1 DOF
@@ -28,7 +34,8 @@ import os
 import numpy as np
 
 from uw_dyn import (Uklad, Czlon, Polaczenie_Obr, Para_Sferyczna,
-                    MomentWzgledny, MomentSferyczny, wektor, u2p, R, wektor_p,
+                    MomentWzgledny, MomentSferyczny, SilaUderzenia,
+                    wektor, u2p, R, wektor_p,
                     mnoz_kwaterniony, sprzezenie_kwaternionu,
                     kwaternion_na_wektor_obrotu, macierz_na_kwaternion)
 
@@ -51,7 +58,17 @@ KNEE_FLEX = 0.45                # ugiecie kolana w postawie [rad]
 
 TUL, RA_G, RA_P, LA_G, LA_P = 1, 2, 3, 4, 5
 UD_L, PD_L, UD_P, PD_P = 6, 7, 8, 9
-N_CZLONOW = 9
+WOREK = 10                       # worek bokserski jako prawdziwe cialo (wahadlo)
+N_CZLONOW = 10
+
+# ----- worek bokserski (wahadlo z masa, podwieszone stawem kulistym) -----
+M_WOREK = 12.0                   # masa worka [kg] (lekki worek treningowy)
+R_WOREK = 0.15                   # promien worka [m]
+H_WOREK = 0.90                   # wysokosc worka [m]
+X_WOREK = 0.55                   # odleglosc worka przed bokserem (os x) [m]
+Z_ZACZEP = 1.55                  # wysokosc zaczepienia liny (staw kulisty) [m]
+Z_WOREK = Z_ZACZEP - H_WOREK/2   # srodek masy worka w spoczynku
+PROM_KONTAKT = R_WOREK + PROM    # promien kontaktu piesc/stopa - worek
 
 OS_Z = np.array([0.0, 0.0, 1.0])
 OS_Y = np.array([0.0, 1.0, 0.0])
@@ -135,6 +152,13 @@ def tensor_preta(m, L):
     return np.diag([Jp, Jp, Jo])   # pret wzdluz lokalnej z
 
 
+def tensor_worka():
+    """Tensor walca (worek) wzdluz lokalnej z: promien R_WOREK, wys. H_WOREK."""
+    Jo = M_WOREK*R_WOREK**2/2
+    Jp = M_WOREK*(3*R_WOREK**2 + H_WOREK**2)/12
+    return np.diag([Jp, Jp, Jo])
+
+
 def tensor_tulowia():
     Jx = M_TUL*(0.32**2 + TUL_H**2)/12
     Jy = M_TUL*(0.22**2 + TUL_H**2)/12
@@ -200,6 +224,16 @@ def zbuduj():
 
     for a in akt.values():
         ukl.dodajSileWewn(a)
+
+    # worek bokserski: wahadlo z masa podwieszone stawem kulistym do zaczepu
+    ukl.dodajCzlon(Czlon(WOREK, M_WOREK, tensor_worka()))
+    ukl.dodajWiez(Para_Sferyczna(0, WOREK, wektor(X_WOREK, 0, Z_ZACZEP),
+                                 wektor(0, 0, H_WOREK/2)))    # zaczep u gory worka
+    # kontakt penalty: piesc (przedramie P) i stopa (podudzie P) uderzaja w worek
+    ukl.dodajSileWewn(SilaUderzenia(RA_P, wektor(0, 0, L_FA/2), WOREK,
+                                    PROM_KONTAKT, H_WOREK/2))
+    ukl.dodajSileWewn(SilaUderzenia(PD_P, wektor(0, 0, L_PD/2), WOREK,
+                                    PROM_KONTAKT, H_WOREK/2))
     ukl.grawitacja = True
 
     # cele bioder/kolan = katy w postawie neutralnej (punkt staly, bez zgadywania)
@@ -246,6 +280,10 @@ def q_startowe(yaw_tul, pozy):
         q[3*(pd-1):3*(pd-1)+3] = srodek_pd
         q[b + 4*(ud-1):b + 4*(ud-1)+4] = p_ud
         q[b + 4*(pd-1):b + 4*(pd-1)+4] = p_pd
+
+    # worek: srodek masy pod zaczepem, kwaternion jednostkowy (wisi pionowo)
+    q[3*(WOREK-1):3*(WOREK-1)+3] = [X_WOREK, 0, Z_WOREK]
+    q[b + 4*(WOREK-1)] = 1.0
     return q
 
 
@@ -373,7 +411,9 @@ def eksportuj(klatki, co_ile=8, plik='web/dane_bokser.js'):
                     'udo': L_UD, 'podudzie': L_PD},
         'indeksy': {'tulow': TUL-1, 'ra_g': RA_G-1, 'ra_p': RA_P-1,
                     'la_g': LA_G-1, 'la_p': LA_P-1,
-                    'ud_L': UD_L-1, 'pd_L': PD_L-1, 'ud_P': UD_P-1, 'pd_P': PD_P-1},
+                    'ud_L': UD_L-1, 'pd_L': PD_L-1, 'ud_P': UD_P-1, 'pd_P': PD_P-1,
+                    'worek': WOREK-1},
+        'worek': {'r': R_WOREK, 'h': H_WOREK, 'zaczep': [X_WOREK, 0, Z_ZACZEP]},
         'klatki': dane_klatki,
     }
     katalog = os.path.dirname(os.path.abspath(plik))
@@ -399,6 +439,12 @@ if __name__ == '__main__':
     print('kopniecie: stopa najdalej x=%.2f m (z=%.2f) w t=%.2f s' %
           (stopy[i_k, 0], stopy[i_k, 2], i_k*DT))
     print('szczytowa predkosc stopy: %.1f m/s' % predk_st.max())
+
+    # ruch worka: wychylenie srodka masy od spoczynku (dowod przekazania pedu)
+    worek = np.array([q[3*(WOREK-1):3*(WOREK-1)+3] for q in klatki])
+    wych = np.hypot(worek[:, 0] - X_WOREK, worek[:, 1])
+    print('worek: maks. wychylenie CoM od spoczynku %.3f m (koncowe %.3f m)' %
+          (wych.max(), wych[-1]))
     print('brak NaN:', not np.isnan(np.array(klatki)).any())
 
     sciezka = os.path.join(os.path.dirname(os.path.abspath(__file__)),

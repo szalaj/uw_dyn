@@ -33,7 +33,7 @@ from uw_dyn.wiezy import (
     Kat,
 )
 from uw_dyn.sily import (SilaWewnProst, SilaWPunkcie, SilaKontaktu,
-                         MomentWzgledny, MomentSferyczny,
+                         SilaUderzenia, MomentWzgledny, MomentSferyczny,
                          OgranicznikKata, OgranicznikStozka, SilaZewn)
 from uw_dyn.uklad import Uklad
 from uw_dyn.antropometria import (Segment, segment, segmenty, masa_calkowita,
@@ -44,7 +44,7 @@ __all__ = [
     "Polaczenie", "Para_Prostopadla", "Para_Prostopadla_D", "Para_Sferyczna",
     "Polaczenie_Obr", "Polaczenie_Cyl", "Polaczenie_Przes",
     "Odleglosc", "Kat",
-    "SilaWewnProst", "SilaWPunkcie", "SilaKontaktu",
+    "SilaWewnProst", "SilaWPunkcie", "SilaKontaktu", "SilaUderzenia",
     "MomentWzgledny", "MomentSferyczny",
     "OgranicznikKata", "OgranicznikStozka", "SilaZewn",
     "wektor", "wektor_p", "r_i", "dr_i", "p_i", "dp_i",

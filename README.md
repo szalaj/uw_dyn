@@ -21,7 +21,7 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
 | `przyklady/piesek.py` | mini-piesek: czworonóg w chodzie pełzającym |
 | `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
-| `przyklady/bokser.py` | kickboxing: sierpowy i front kick (nogi z kolanem) |
+| `przyklady/bokser.py` | kickboxing na worku: sierpowy i front kick; worek to wahadło z masą, ciosy trafiają w nie przez kontakt bryła-bryła |
 | `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
 | `przyklady/krok.py` | praca nóg: krok w bok z balansem PID (mechanika + balans; kierunkowy krok w toku) |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
@@ -70,6 +70,7 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
   - `SilaWewnProst`: element sprężysto-tłumiący z siłą stałą (sprężyna, tłumik, siłownik) między punktami dwóch członów; z `tylko_rozciaganie=True` działa jak lina,
   - `SilaWPunkcie`: siła zadana w układzie ciała, zaczepiona w punkcie (np. ciąg wirnika drona, podąża za orientacją),
   - `SilaKontaktu`: jednostronny kontakt punktu ciała z podłożem z=0 (model penalty ze sprężyną, tłumieniem i tarciem),
+  - `SilaUderzenia`: kontakt penalty bryła-bryła (punkt jednego ciała vs kapsuła drugiego, np. pięść/stopa w worek treningowy); siła równa i przeciwna na oba ciała, zaczepiona w punkcie kontaktu, więc przekazuje pęd i wprawia trafione ciało w ruch,
   - `MomentWzgledny`: aktuator obrotowy 1 DOF w przegubie (regulator PD, opcjonalnie PID przez `ki`) dążący do zadanego kąta, do stawów zawiasowych (kolano, łokieć); opcjonalny limit momentu `moment_max`,
   - `MomentSferyczny`: napędzany staw kulisty 3 DOF (regulator PD/PID na orientacji 3D) dążący do zadanej orientacji względnej; łączyć z `Para_Sferyczna`; opcjonalny limit `moment_max`,
   - `OgranicznikKata`: miękki ogranicznik zakresu ruchu przegubu zawiasowego (łokieć, kolano); jednostronna sprężyna-tłumik aktywna poza `[kat_min, kat_max]`,
