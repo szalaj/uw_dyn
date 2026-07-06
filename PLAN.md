@@ -204,9 +204,13 @@ drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
       neutralnego do `kat_max`). Model penalty (miękki: dopuszcza małe
       przejściowe wniknięcie, malejące ze sztywnością). 5 testów
       (`test_ograniczniki.py`). Można je dołożyć do stawów boksera/modelu.
-- [ ] Model „mięśni/napędów" stawów: aktuator momentu z ograniczeniem
-      maksymalnego momentu (nie liniowa sprężyna bez limitu), żeby siły ciosów
-      były fizycznie sensowne.
+- [x] Model „mięśni/napędów" stawów — **ZROBIONE 2026-07-06**: `MomentWzgledny`
+      i `MomentSferyczny` mają opcjonalny `moment_max` (saturacja wartości/normy
+      momentu). Słaby napęd nie dźwignie ciężaru do celu (siły ciosów fizyczne).
+      UWAGA: w saturacji człon `k*błąd` przewyższa limit, więc tłumienie
+      (też objęte limitem) traci wpływ i staw może oscylować; realny staw ma
+      pasywne tłumienie tkanek, które dodaje się osobnym `MomentWzgledny`
+      (k=0, c>0, bez limitu). 4 testy (`test_moment_max.py`).
 
 **Pułapka symetrii kończyn (lekcja z boksera, 2026-07-06):** budując parzyste
 kończyny (dwie ręce, dwie nogi) przez lustrzane odbicie względem płaszczyzny

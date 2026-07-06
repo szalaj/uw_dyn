@@ -222,9 +222,16 @@ class MomentWzgledny:
     tak, ze przy theta=0 wektory ref obu czlonow sie pokrywaja. theta_cel
     mozna zmieniac miedzy segmentami symulacji (sterowanie).
 
+    moment_max: opcjonalne ograniczenie wartosci bezwzglednej momentu [N*m]
+    (saturacja jak w realnym napedzie/miesniu); None = bez limitu. UWAGA: przy
+    saturacji czlon k*blad przewyzsza limit, wiec tlumienie (rowniez objete
+    limitem) traci wplyw i przegub moze oscylowac; realny staw ma pasywne
+    tlumienie tkanek, ktore mozna dodac osobnym MomentWzgledny (k=0, c>0,
+    bez moment_max).
+
     Dla i=0 (podstawa) os i ref sa w ukladzie globalnym."""
 
-    def __init__(self, i, j, axis, ref, k, theta_cel, c):
+    def __init__(self, i, j, axis, ref, k, theta_cel, c, moment_max=None):
         self.i = i
         self.j = j
         self.a = np.asarray(axis, dtype=float).reshape(3, 1)
@@ -234,6 +241,7 @@ class MomentWzgledny:
         self.k = k
         self.theta_cel = theta_cel
         self.c = c
+        self.moment_max = moment_max
 
     def energia_potencjalna(self, q, N):
         if self.k == 0:
@@ -282,6 +290,8 @@ class MomentWzgledny:
         dtheta = float(a_g.ravel().dot((om_j - om_i).ravel()))
 
         tau = self.k*(self.theta_cel - theta) - self.c*dtheta
+        if self.moment_max is not None:
+            tau = max(-self.moment_max, min(self.moment_max, tau))
         M = tau*a_g  # moment globalny na czlon j
 
         Qr_i = np.zeros((3, 1))
@@ -306,15 +316,19 @@ class MomentSferyczny:
     miedzy segmentami symulacji (sterowanie 3D, np. bark, biodro). Moment
     liczony jest w ukladzie globalnym: M = -k*phi - c*(om_j - om_i), gdzie
     phi to wektor obrotu bledu (od orientacji docelowej do biezacej), i
-    przykladany jako para wewnetrzna (+M na j, -M na i)."""
+    przykladany jako para wewnetrzna (+M na j, -M na i).
 
-    def __init__(self, i, j, k, c, p_cel=None):
+    moment_max: opcjonalne ograniczenie wartosci bezwzglednej (normy) momentu
+    [N*m] (saturacja jak w realnym napedzie/miesniu); None = bez limitu."""
+
+    def __init__(self, i, j, k, c, p_cel=None, moment_max=None):
         self.i = i
         self.j = j
         self.k = k
         self.c = c
         self.p_cel = (np.array([1.0, 0.0, 0.0, 0.0]) if p_cel is None
                       else np.asarray(p_cel, dtype=float).ravel())
+        self.moment_max = moment_max
 
     def _blad(self, q, N):
         """Wektor obrotu bledu (uklad globalny) orientacji czlonu j."""
@@ -352,6 +366,10 @@ class MomentSferyczny:
         phi = self._blad(q, N).reshape(3, 1)            # blad orientacji (global)
         om_rel = om_j - om_i
         M = -self.k*phi - self.c*om_rel                 # moment globalny na j
+        if self.moment_max is not None:
+            nrm = float(np.linalg.norm(M))
+            if nrm > self.moment_max:
+                M = M*(self.moment_max/nrm)
 
         Qr_i = np.zeros((3, 1))
         Qr_j = np.zeros((3, 1))
