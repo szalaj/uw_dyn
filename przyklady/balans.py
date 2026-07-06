@@ -27,7 +27,9 @@ OSX = np.array([1.0, 0.0, 0.0])
 MASA, WZROST = 75.0, 1.80
 PCHNIECIE = 0.35        # pozioma predkosc poczatkowa (pchniecie) [m/s]
 SEGMENT = 0.01          # takt regulatora balansu [s]
-DT = 2.0e-4             # krok calkowania [s]
+DT = 2.0e-3             # krok calkowania [s] (sym3 polniejawny; 10x sufit
+                        # dokladnosci sym2, a przypadek bez balansu pozostaje
+                        # wierny - przy 5e-3 swobodny upadek jest przetlumiony)
 CZAS = 1.0
 
 # PID trzymania pozy (stawy): nizsza sztywnosc + czlon calkujacy (bez sagu)
@@ -84,7 +86,7 @@ def symuluj(balans=True, czas=CZAS):
                 akt['biodro_'+b].p_cel = mnoz_kwaterniony(
                     u2p(OSX, WZM_BIODRO*u[1]), baza_biodro[b])        # bok
 
-        ukl.sym2(np.concatenate((q, dq)), 0.0, SEGMENT, DT)
+        ukl.sym3(np.concatenate((q, dq)), 0.0, SEGMENT, DT, polniejawne=True)
         Y = ukl.Y
         for w in Y[:-1]:
             klatki.append(w[0:7*N].copy())

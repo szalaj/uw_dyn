@@ -19,9 +19,13 @@
 # odwiedzenie stawia stope wyraznie w bok, ale figura osiada (kolana ugielaja
 # sie pod dynamika); umiarkowane odwiedzenie trzyma balans, lecz pochyl
 # rownowazacy sciaga noge z powrotem do srodka. To sprzezenie balans<->krok
-# wymaga regulatora ustawienia stopy (capture point) i drobniejszego strojenia,
-# ktore blokuje koszt symulacji (dt=2e-4, ~340 s symulacji na 1 s ruchu).
-# Docelowo: szybszy integrator (RATTLE, docs/ULEPSZENIA.md) + capture point.
+# wymaga regulatora ustawienia stopy (capture point) i drobniejszego strojenia.
+# Calkowanie: sym3 polniejawny (RATTLE + niejawne tlumienie/sprezyny), dt=1e-3
+# (5x wiekszy krok niz sym2). UWAGA: ta sekwencja jest WRAZLIWA na dt - wynik
+# koncowy stopy zmienia sie jakosciowo miedzy dt (bo to sterowanie w petli
+# otwartej bez regulatora ustawienia stopy), np. dt=2e-3 daje absurdalny
+# wyskok. Balans trzyma figure, ale sam krok wymaga jeszcze capture pointu -
+# az do tego trzymamy zachowawczy dt=1e-3.
 #
 # Wynik: web/dane_krok.js do wizualizacji Three.js (web/krok.html).
 
@@ -37,7 +41,8 @@ OSX = np.array([1.0, 0.0, 0.0])
 
 MASA, WZROST = 75.0, 1.80
 SEGMENT = 0.01
-DT = 2.0e-4
+DT = 1.0e-3          # sym3 polniejawny; regulator kroku jest wrazliwy na dt
+                     # (patrz naglowek), wiec bezpieczny krok - nie 2e-3+
 CZAS = 1.8
 
 K_HOLD, C_HOLD, KI_HOLD, CMAX_HOLD = 140.0, 14.0, 180.0, 120.0
@@ -130,7 +135,7 @@ def symuluj():
             u2p(OSX, roll), mnoz_kwaterniony(baza_biodro['P'],
                                              u2p(OSX, ABDUKCJA*abd)))
 
-        ukl.sym2(np.concatenate((q, dq)), 0.0, SEGMENT, DT)
+        ukl.sym3(np.concatenate((q, dq)), 0.0, SEGMENT, DT, polniejawne=True)
         Y = ukl.Y
         for w in Y[:-1]:
             klatki.append(w[0:7*N].copy())
