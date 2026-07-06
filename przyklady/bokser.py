@@ -51,7 +51,9 @@ REF_X = wektor(1, 0, 0)
 # garda: lokcie w dol, piesci przy policzkach
 G = {
     'R': dict(dz=(0.30, 0.20, -1.0), dx=(0.0, -0.5, 0.6), flex=2.60),
-    'L': dict(dz=(0.30, -0.20, -1.0), dx=(0.0, 0.5, 0.6), flex=2.60),
+    # lewa reka to lustro prawej; odbicie zmienia skretnosc, wiec zgiecie
+    # lokcia ma znak ujemny (inaczej przedramie wygina sie nienaturalnie w tyl)
+    'L': dict(dz=(0.30, -0.20, -1.0), dx=(0.0, 0.5, 0.6), flex=-2.60),
 }
 # prawy sierpowy: ramie uniesione (lokiec do wysokosci barku), piesc lukiem
 # w przod-w poprzek; korpus obraca sie CCW (prawy bark do przodu), yaw rosnie
