@@ -203,6 +203,14 @@ drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
       maksymalnego momentu (nie liniowa sprężyna bez limitu), żeby siły ciosów
       były fizycznie sensowne.
 
+**Pułapka symetrii kończyn (lekcja z boksera, 2026-07-06):** budując parzyste
+kończyny (dwie ręce, dwie nogi) przez lustrzane odbicie względem płaszczyzny
+strzałkowej (y → −y), trzeba ODWRÓCIĆ TAKŻE znak kątów zawiasów (łokieć,
+kolano). Odbicie zmienia skrętność, więc to samo dodatnie zgięcie o tej samej
+osi wygina lewy staw w drugą stronę (nieanatomicznie, np. przedramię do tyłu).
+W `bokser.py` lewa ręka ma `flex = −2.60` (prawa `+2.60`). To samo dotyczy
+całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji negujemy.
+
 ### Etap B: sterowanie ruchem zawodnika
 
 - [ ] Biblioteka gotowych ruchów jako trajektorie kątów stawów w czasie
