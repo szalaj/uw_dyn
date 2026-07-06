@@ -541,31 +541,87 @@ class Uklad:
         PS = self.Pstrona(q, dq)
         return np.linalg.solve(LS, PS).ravel()[0:7*self.N]
 
-    # polniejawny krok predkosci dla RATTLE: rozwiazuje
-    #   v_kon = v_pol + dt/2 * a(q, v_kon)
-    # jednym krokiem Newtona z jakobianem przyspieszenia po predkosci.
-    # Tanie, bo Lstrona (macierz KKT) nie zalezy od predkosci: faktoryzacja
-    # LU raz, a kolumny jakobianu to tanie solve na gotowej faktoryzacji.
-    # Sily tlumiace sa LINIOWE w predkosci -> ich (sztywny) wklad jest ujety
-    # dokladnie, co znosi ograniczenie stabilnosci jawnego kroku predkosci.
-    def _krok_predkosci_polniejawny(self, q, v_pol, dt):
+    # DOFy (kolumny/wiersze w ukladzie [r(3N); p(4N)]) czlonu m (1-indeks)
+    def _dofy_czlonu(self, m):
         N = self.N
-        n = 7*N + self.M + N
-        LS = self.Lstrona(q, v_pol)
-        lu = scipy.linalg.lu_factor(LS)
-        a0 = scipy.linalg.lu_solve(lu, self.Pstrona(q, v_pol).ravel())[0:7*N]
+        return (list(range(3*(m-1), 3*(m-1)+3))
+                + list(range(3*N+4*(m-1), 3*N+4*(m-1)+4)))
 
-        eps = 1e-7*max(1.0, np.abs(v_pol).max())
-        RHS = np.empty((n, 7*N))
-        for j in range(7*N):
-            vp = v_pol.copy()
-            vp[j] += eps
-            RHS[:, j] = self.Pstrona(q, vp).ravel()
-        A = (scipy.linalg.lu_solve(lu, RHS)[0:7*N, :] - a0[:, None])/eps  # da/dv
+    # RZADKI jakobian sil wewnetrznych 7N x 7N (uklad [r(3N); p(4N)]):
+    #  wzgledem='v' -> macierz tlumienia C = dQ/d(predkosc),
+    #  wzgledem='q' -> macierz sztywnosci K = dQ/d(polozenie).
+    # Kazda sila jest lokalna (czlony i, j), wiec rozniczkujemy ja tylko po
+    # DOFach jej czlonow i wstawiamy do odpowiednich blokow - koszt O(l. sil),
+    # nie O(N). Blok r czlonu m: wiersze 3(m-1):3(m-1)+3; blok p: 3N+4(m-1): +4.
+    def _jakobian_sil(self, q, dq, wzgledem):
+        N = self.N
+        B = np.zeros((7*N, 7*N))
+        baza = dq if wzgledem == 'v' else q
+        eps = 1e-7*max(1.0, np.abs(baza).max())
 
-        # Newton: (I - dt/2 A) dv = dt/2 a0 ; v_kon = v_pol + dv
-        dv = np.linalg.solve(np.eye(7*N) - 0.5*dt*A, 0.5*dt*a0)
-        return v_pol + dv
+        def wr(m):
+            return slice(3*(m-1), 3*(m-1)+3)
+
+        def wp(m):
+            return slice(3*N+4*(m-1), 3*N+4*(m-1)+4)
+
+        for s in self.silyWewn:
+            czlony = [c for c in (s.i, s.j) if c != 0]
+            Q0 = s.sila(q, dq, N)
+            for m in czlony:
+                for c in self._dofy_czlonu(m):
+                    pert = baza.copy()
+                    pert[c] += eps
+                    Q1 = (s.sila(q, pert, N) if wzgledem == 'v'
+                          else s.sila(pert, dq, N))
+                    d = [(np.asarray(a1) - np.asarray(a0)).ravel()/eps
+                         for a0, a1 in zip(Q0, Q1)]
+                    if s.i != 0:
+                        B[wr(s.i), c] += d[0]
+                        B[wp(s.i), c] += d[1]
+                    B[wr(s.j), c] += d[2]
+                    B[wp(s.j), c] += d[3]
+        return B
+
+    # polniejawny krok predkosci dla RATTLE: rozwiazuje niejawnie
+    #   LS0 * x = Pstrona(q, v_pol + dt/2*a),   x = [a; l],  v_kon = v_pol+dt/2*a
+    # Sztywne jest tylko TLUMIENIE (liniowe w predkosci). Jakobian residuum
+    # G(x)=LS0*x-Pstrona to LS0 - (dt/2) dPstrona/dv; jego sztywna czesc to
+    # RZADKA macierz tlumienia C=dQ/dv wcielona w blok masowy (LSm). Newton:
+    #   x <- x - LSm^-1 (LS0*x - Pstrona(q, v_pol+dt/2*a)).
+    # iteracje=1: liniowo-niejawny (rzad 1); iteracje=2: +1 krok Newtona
+    # domyka nieszywna reszte (zyroskopia, gamma) do rzedu 2. Koszt ~2 solve
+    # zamiast 7N; C zbudowane rzadko (per sila, po DOFach jej czlonow).
+    # Poprawnie: residuum uzywa LS0 (bez modyfikacji), solve uzywa LSm -
+    # inaczej tlumienie byloby liczone podwojnie.
+    def _krok_predkosci_polniejawny(self, q, v_pol, dt, iteracje=2):
+        N = self.N
+        LS0 = self.Lstrona(q, v_pol)
+        C = self._jakobian_sil(q, v_pol, 'v')
+        LSm = LS0.copy()
+        LSm[0:7*N, 0:7*N] -= 0.5*dt*C
+        lu = scipy.linalg.lu_factor(LSm)
+        x = scipy.linalg.lu_solve(lu, self.Pstrona(q, v_pol).ravel())
+        for _ in range(iteracje - 1):
+            v = v_pol + 0.5*dt*x[0:7*N]
+            G = LS0.dot(x) - self.Pstrona(q, v).ravel()
+            x = x - scipy.linalg.lu_solve(lu, G)
+        return v_pol + 0.5*dt*x[0:7*N]
+
+    # przyspieszenie do kroku POLOZEN, linearyzowane w sztywnosci sprezyn:
+    #   (M - (dt^2/2) K) a = [F + dt*K*v ; gamma],   K = dQ/dq (rzadka).
+    # Wynika z q_new-q = dt*v + (dt^2/2)a i sily w q_new ~ F + K(q_new-q).
+    # Znosi ograniczenie stabilnosci jawnego kroku polozen przy sztywnych
+    # SPREZYNACH (kontakt penalty, mocne sprezyny), analogicznie jak
+    # _krok_predkosci_polniejawny znosi je dla sztywnego tlumienia.
+    def _przyspieszenie_niejawne_q(self, q, dq, dt):
+        N = self.N
+        K = self._jakobian_sil(q, dq, 'q')
+        LS = self.Lstrona(q, dq)
+        LS[0:7*N, 0:7*N] -= 0.5*dt*dt*K
+        PS = self.Pstrona(q, dq).ravel()
+        PS[0:7*N] += dt*K.dot(dq[0:7*N])
+        return np.linalg.solve(LS, PS)[0:7*N]
 
     # integracja typu RATTLE (Verlet predkosciowy z wiezami w kroku)
     def sym3(self, y0, t0, tK, dt, polniejawne=False):
@@ -585,15 +641,24 @@ class Uklad:
         w klasycznym Verlecie - plus dwie projekcje), a dokladnosc o rzedy
         wielkosci lepsza -> w praktyce mozna uzyc znacznie wiekszego dt.
 
-        polniejawne=True: krok predkosci (3) liczony PoLNIEJAWNIE (jeden krok
-        Newtona z jakobianem przyspieszenia po predkosci) zamiast iteracja
-        punktu stalego. Znosi ograniczenie stabilnosci przy sztywnym TLUMIENIU
-        na lekkich czlonach (c/J*dt/2 > 1), gdzie jawny sym3 wybucha. Koszt
-        kroku rosnie (budowa jakobianu: 7N ewaluacji sil), ale pozwala na
-        znacznie wiekszy dt, gdy o suficie decyduje tlumienie (pelna sylwetka,
-        mocne serwa). Dla sil sztywnych sprezystych (nie tlumiacych) sufit dt
-        nadal wyznacza jawny krok polozen. y0 nie jest modyfikowane.
-        Wyniki w self.Y."""
+        polniejawne=True: tryb dla sztywnych sil (tlumienie ORAZ sprezyny),
+        stabilny daleko powyzej progu jawnego. Dwa mechanizmy, oba oparte na
+        RZADKICH jakobianach sil (liczonych lokalnie, per sila po DOFach jej
+        czlonow -> koszt O(l. sil), nie 7N ewaluacji Pstrona):
+          - niejawne TLUMIENIE: krok predkosci linearyzuje sily tlumiace,
+            wcielajac C=dQ/dv w blok masowy KKT (patrz
+            _krok_predkosci_polniejawny); znosi limit c/m*dt/2>1,
+          - niejawne SPREZYNY: krok polozen linearyzuje sily sprezyste,
+            (M-(dt^2/2)K)a=[F+dt*K*v; gamma], K=dQ/dq (patrz
+            _przyspieszenie_niejawne_q); znosi limit omega*dt<2.
+        Rzad 2 zachowany dla ukladow niesztywnych. Koszt ~3 solve/krok +
+        dwie budowy rzadkiego jakobianu. Oplaca sie, gdy o suficie dt decyduje
+        sztywnosc: pelna sylwetka na stopach biegnie na dt=5e-3 (5x sufit
+        sym2) SZYBCIEJ i dokladniej niz sym2. UWAGA: przy bardzo grubym dt
+        (omega*dt>>1) szybka moda sprezyny jest tlumiona/znieksztalcona (nie
+        rozwiazywana) - to celowe dla sztywnych sprezyn bliskich rownowagi
+        (kontakt), ale nie uzywac, gdy szybka moda jest fizycznie istotna.
+        y0 nie jest modyfikowane. Wyniki w self.Y."""
         N = self.N
         self.alfa = 0
         self.beta = 0
@@ -609,6 +674,11 @@ class Uklad:
             for s in pid:
                 s.aktualizuj_calke(q, N, dt)
 
+            # krok polozen: w trybie polniejawnym przyspieszenie linearyzowane
+            # w sztywnosci sprezyn (niejawne sprezyny), inaczej przeniesione
+            # z poprzedniego kroku (klasyczny Verlet)
+            if polniejawne:
+                a = self._przyspieszenie_niejawne_q(q, dq, dt)
             v_pol = dq + 0.5*dt*a
             q += dt*v_pol
 

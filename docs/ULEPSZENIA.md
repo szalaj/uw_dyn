@@ -94,17 +94,31 @@ powielanie kodu i pozwoli na zdarzenia (patrz punkt 4).
      układ z `c/m=1000` (próg jawny dt=2m/c) jawny sym3 wybucha przy
      dt≥4e-3, a półniejawny wygasza prędkość poprawnie przy każdym dt;
      rząd 2 zachowany (stosunek błędu 4.00); figura (84 DOF) biegnie na
-     dt=2e-3 (2× sufit sym2) z mniejszym dryfem. OGRANICZENIE: koszt kroku
-     rośnie (budowa gęstego jakobianu = 7N ewaluacji sił), więc netto
-     wygrywa tylko przy małym/średnim N. Dla figury z kontaktem sym2 przy
-     dt=1e-3 jest wciąż szybszy zegarowo (8 s vs 49 s na 0.2 s ruchu),
-     mimo że półniejawny sym3 jest stabilniejszy i dokładniejszy na krok —
-     **dla pełnej sylwetki zostaje więc sym2**. Dalsze przyspieszenie
-     figury wymaga: (a) analitycznej/rzadkiej macierzy tłumienia (tłumiki
-     są lokalne, więc jakobian jest rzadki — dziś liczony gęsto), ORAZ
-     (b) niejawnego traktowania sztywnych SPRĘŻYN kontaktu (dziś jawnych,
-     osobny sufit dt). Półniejawny sym3 domyka więc tłumienie, ale nie
-     sprężyny.
+     dt=2e-3 (2× sufit sym2). Pierwsza wersja liczyła jakobian gęsto
+     (7N ewaluacji sił, 49 s na 0.2 s figury) — patrz punkt 2c.
+  2c. Rzadki jakobian tłumienia + niejawne sprężyny — **ZROBIONE
+     2026-07-06**, domyka oba wąskie gardła figury:
+     - **Rzadki jakobian** (`_jakobian_sil`): tłumiki i sprężyny są
+       lokalne (każda siła dotyka 2 członów), więc jakobian liczymy per
+       siła po DOFach jej członów — koszt O(liczba sił), nie 7N ewaluacji
+       `Pstrona`. Krok prędkości to teraz 2 solve (linearyzacja + 1 krok
+       Newtona domykający żyroskopię/gammę do rzędu 2), nie 7N+1.
+     - **Niejawne sprężyny** (`_przyspieszenie_niejawne_q`): krok położeń
+       linearyzuje siły sprężyste, `(M−(dt²/2)K)a = [F+dt·K·v; γ]`,
+       `K=∂Q/∂q`. Znosi limit `ω·dt<2` jawnego kroku położeń: masa na
+       sprężynie `k=1e5` (próg jawny dt=6.3e-3) jest stabilna przy dt=4e-2
+       (`ω·dt=12.6`), gdzie sym2 i jawny sym3 wybuchają.
+     Efekt na figurze: sufit dt wzrósł z 2e-3 do 1e-2. Przy **dt=5e-3
+     (5× sufit sym2) figura liczy się w 4 s z dryfem 0.7 mm, czyli
+     SZYBCIEJ i dokładniej niż sym2** (5 s, 1.9 mm przy dt=1e-3). Rząd 2
+     zachowany na układach niesztywnych. OGRANICZENIE: sprężyny są niejawne
+     tylko w kroku położeń (nie w kicku prędkości), więc przy bardzo grubym
+     dt (`ω·dt≫1`) szybka moda sprężyny jest tłumiona/zniekształcona, a nie
+     rozwiązywana — to pożądane dla sztywnego kontaktu bliskiego równowagi,
+     ale `polniejawne=True` nie służy do wiernego oddania szybkich drgań
+     sprężystych. Dalej (opcjonalnie): sprężyny niejawne także w kicku
+     (pełny linearly-implicit trapez) i macierz rzadka w scipy.sparse przy
+     dużym N.
   3. integratory na grupie Liego (SO(3)): kwaternion aktualizowany
      mnożeniem przez kwaternion przyrostowy, norma zachowana z definicji,
      znika też problem jakobianów przy nieunormowanych kwaternionach.

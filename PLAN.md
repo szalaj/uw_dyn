@@ -308,10 +308,11 @@ Powiązane: te rozszerzenia częściowo pokrywają się z listą w `docs/ULEPSZE
 - Trzy integratory: `sym2` (półjawny Euler, rząd 1; najodporniejszy na
   sztywne tłumienie — używać dla figury z kontaktem), `sym3` (RATTLE/Verlet,
   rząd 2, więzy maszynowo dokładne, energia ~500× lepsza; jawny wybucha przy
-  sztywnym tłumieniu c/m·dt/2>1, tryb `polniejawne=True` daje bezwarunkową
-  stabilność w tłumieniu jednym krokiem Newtona, ale kosztem 7N ewaluacji
-  sił/krok — opłaca się dla małego/średniego N, nie dla figury) i `sym`
-  (solve_ivp RK45, adaptacyjny; bez rzutowania i bez PID)
+  sztywnym tłumieniu c/m·dt/2>1 lub sztywnych sprężynach ω·dt>2, tryb
+  `polniejawne=True` znosi oba przez rzadkie jakobiany sił wcielane do KKT
+  (tłumienie w kroku prędkości, sztywność w kroku położeń) — ~3 solve/krok,
+  rząd 2 zachowany, figura biegnie na dt=5e-3 szybciej i dokładniej niż sym2)
+  i `sym` (solve_ivp RK45, adaptacyjny; bez rzutowania i bez PID)
 - Nowe metody `Uklad`: `projekcja_polozen`, `projekcja_predkosci`
   (uderzenie plastyczne), `energia_kinetyczna/potencjalna/energia`
 - Przykłady: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`;

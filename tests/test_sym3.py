@@ -136,6 +136,36 @@ def test_sym3_polniejawny_rzad_2():
     assert blad(8e-4)/blad(4e-4) == pytest.approx(4.0, rel=0.2)
 
 
+def _stiff_spring(polniejawne, dt, k=1e5):
+    """Masa na bardzo sztywnej sprezynie pionowej (omega=sqrt(k/m), prog jawny
+    dt<2/omega). Start blisko rownowagi. Zwraca True gdy stabilne (nie wybucha,
+    nie rozbiega)."""
+    m = 1.0
+    ukl = Uklad()
+    ukl.dodajCzlon(Czlon(1, m, np.diag([1.0, 1.0, 1.0])))
+    ukl.dodajSileWewn(SilaWewnProst(0, 1, wektor(0, 0, 0), wektor(0, 0, 0),
+                                    k, 0.0, 2.0, 0))
+    ukl.grawitacja = True
+    q0 = np.zeros(7)
+    q0[2] = -m*9.81/k
+    q0[3] = 1.0
+    try:
+        ukl.sym3(np.concatenate((q0, np.zeros(7))), 0.0, 0.5, dt,
+                 polniejawne=polniejawne)
+        return bool(abs(ukl.Y[-1][2]) < 0.1)
+    except RuntimeError:
+        return False
+
+
+def test_sym3_polniejawny_niejawne_sprezyny():
+    """Niejawne sprezyny: przy dt daleko powyzej progu jawnego (omega*dt>>2)
+    jawny sym3 wybucha, a polniejawny (linearyzacja kroku polozen sztywnoscia
+    K=dQ/dq) pozostaje stabilny. k=1e5, m=1 -> omega=316, prog jawny dt<6.3e-3;
+    dt=4e-2 to omega*dt=12.6 (6x prog)."""
+    assert _stiff_spring(False, 4e-2) is False   # jawny wybucha
+    assert _stiff_spring(True, 4e-2) is True      # polniejawny stabilny
+
+
 def test_sym3_pid_dziala():
     """Hook czlonu calkujacego (PID) dziala takze w sym3."""
     from uw_dyn import MomentWzgledny
