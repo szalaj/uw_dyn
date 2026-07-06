@@ -32,11 +32,10 @@
 <div id="panel">
   <h1>Kickboxing na worku</h1>
   <p>Model 3D: barki i biodra to stawy kuliste, łokcie i kolana to zawiasy.
-     Sekwencja: garda → prawy sierpowy (łukiem w przód, moc ze skrętu
-     korpusu) → front kick tylną nogą (kolano w górę, wyprost stopą w przód)
-     → powrót do postawy. Worek to prawdziwe ciało: ciężkie wahadło (22 kg)
+     Kombinacja: jab (lewa prosta) → prosty (prawa) → sierpowy → front kick,
+     szybkie ciosy (6–8 m/s). Worek to prawdziwe ciało: ciężkie wahadło (22 kg)
      z tłumionym przegubem, więc po trafieniu wychyla się i wraca do pionu.
-     Ciosy trafiają przez kontakt bryła-bryła (mierzone niżej).</p>
+     Ciosy trafiają przez kontakt bryła-bryła (siła i impuls niżej).</p>
   <p>Prędkość pięści: <span id="vmax">0.0 m/s</span></p>
   <p id="metryki"></p>
   <p>Mysz: obracanie, kółko: przybliżenie.</p>
@@ -210,14 +209,16 @@ suwak.max = klatki.length - 1;
 const przyciskGraj = document.getElementById('graj');
 const poleCzas = document.getElementById('czas');
 const poleV = document.getElementById('vmax');
-// metryki uderzenia (szczytowa sila i impuls z kontaktu z workiem)
+// metryki per cios (szczytowa sila i impuls z kontaktu z workiem)
 if (DANE.metryki) {
   const m = DANE.metryki;
-  const nazwy = { piesc: 'sierpowy', stopa: 'front kick' };
-  const wiersze = Object.keys(m).map(k =>
-    `${nazwy[k] || k}: ${m[k].F} N, impuls ${m[k].imp} N·s`);
+  const nazwy = { jab: 'jab', prosty: 'prosty', sierpowy: 'sierpowy',
+                  kopniecie: 'front kick' };
+  const kol = ['jab', 'prosty', 'sierpowy', 'kopniecie'];
+  const wiersze = kol.filter(k => m[k]).map(k =>
+    `${nazwy[k]}: ${m[k].F} N, impuls ${m[k].imp} N·s`);
   document.getElementById('metryki').innerHTML =
-    'Uderzenie w worek —<br>' + wiersze.join('<br>');
+    'Kombinacja na worku —<br>' + wiersze.join('<br>');
 }
 const wyborTempa = document.getElementById('tempo');
 const polePetla = document.getElementById('petla');
