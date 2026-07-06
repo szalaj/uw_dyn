@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>uw_dyn: balans na stopach (PID)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #10141a;
+               font-family: system-ui, sans-serif; color: #e8e8e8; }
+  #scena { position: absolute; inset: 0; }
+  #panel { position: absolute; left: 12px; top: 12px; padding: 12px 16px;
+           background: rgba(16,20,26,.82); border: 1px solid #2a3442;
+           border-radius: 10px; max-width: 340px; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  #panel p { font-size: 12px; margin: 4px 0; color: #9fb0c3; }
+  #sterowanie { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+                display: flex; gap: 10px; align-items: center; padding: 10px 14px;
+                background: rgba(16,20,26,.82); border: 1px solid #2a3442; border-radius: 10px; }
+  button { background: #2563eb; border: 0; color: #fff; border-radius: 6px; padding: 6px 14px; cursor: pointer; }
+  input[type=range] { width: 240px; }
+  select { background: #1b2330; color: #e8e8e8; border: 1px solid #2a3442; border-radius: 6px; padding: 4px; }
+  #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 60px; }
+</style>
+</head>
+<body>
+<div id="scena"></div>
+<div id="panel">
+  <h1>Balans na stopach (regulator PID)</h1>
+  <p>Pełna sylwetka (antropometria) na swobodnej podstawie, stopy w kontakcie
+     z podłożem. Stawy trzymane PID-em, a regulator balansu PID sprzęga
+     położenie środka masy z kostkami (przód-tył) i biodrami (bok). Postać
+     dostaje pchnięcie i utrzymuje równowagę nad stopami.</p>
+  <p>Mysz: obracanie, kółko: przybliżenie.</p>
+</div>
+<div id="sterowanie">
+  <button id="graj">⏸ pauza</button>
+  <input type="range" id="suwak" min="0" value="0" step="1">
+  <span id="czas">0.00 s</span>
+  <select id="tempo"><option value="0.25">0.25x</option><option value="0.5" selected>0.5x</option><option value="1">1x</option></select>
+  <label style="font-size:12px"><input type="checkbox" id="petla" checked> pętla</label>
+</div>
+
+<script src="dane_balans.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/" } }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const kolejnosc = DANE.kolejnosc, W = DANE.wymiary, klatki = DANE.klatki;
+
+const scena = new THREE.Scene();
+scena.background = new THREE.Color(0x10141a);
+scena.fog = new THREE.Fog(0x10141a, 6, 16);
+const kamera = new THREE.PerspectiveCamera(45, innerWidth/innerHeight, 0.05, 100);
+kamera.position.set(2.4, 1.4, 2.6);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight); renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+document.getElementById('scena').appendChild(renderer.domElement);
+const kontrola = new OrbitControls(kamera, renderer.domElement);
+kontrola.target.set(0, 0.9, 0); kontrola.enableDamping = true;
+
+scena.add(new THREE.HemisphereLight(0xbcd4ff, 0x30281e, 0.9));
+const slonce = new THREE.DirectionalLight(0xffffff, 1.6);
+slonce.position.set(3, 6, 2); slonce.castShadow = true;
+slonce.shadow.mapSize.set(2048, 2048);
+slonce.shadow.camera.left=-3; slonce.shadow.camera.right=3; slonce.shadow.camera.top=3; slonce.shadow.camera.bottom=-3;
+scena.add(slonce);
+const podloga = new THREE.Mesh(new THREE.CircleGeometry(4, 48),
+  new THREE.MeshStandardMaterial({ color: 0x1b2330, roughness: 0.95 }));
+podloga.rotation.x = -Math.PI/2; podloga.receiveShadow = true; scena.add(podloga);
+scena.add(new THREE.GridHelper(8, 32, 0x2f3d50, 0x232c37));
+
+const swiat = new THREE.Group(); swiat.rotation.x = -Math.PI/2; scena.add(swiat);
+const matC = new THREE.MeshStandardMaterial({ color: 0xd98b5f, roughness: 0.6 });
+const matU = new THREE.MeshStandardMaterial({ color: 0x4f8edb, roughness: 0.55 });
+
+// jeden mesh na czlon; glowa = kula, stopa = kostka, reszta = kapsula wzdluz z
+const meshe = {};
+for (const nazwa of kolejnosc) {
+  const [dl, pr] = W[nazwa];
+  let m;
+  if (nazwa === 'glowa') {
+    m = new THREE.Mesh(new THREE.SphereGeometry(dl*0.5, 20, 16), matC);
+  } else if (nazwa.startsWith('stopa')) {
+    m = new THREE.Mesh(new THREE.BoxGeometry(dl, 0.09, 0.05),
+      new THREE.MeshStandardMaterial({ color: 0x2a2a2a, roughness: 0.8 }));
+    m.geometry.translate(0, 0, 0);  // srodek w SM
+  } else {
+    const mat = (nazwa === 'tulow') ? matU : matC;
+    const g = new THREE.Group();
+    const kap = new THREE.Mesh(new THREE.CapsuleGeometry(pr, Math.max(dl-2*pr, 0.02), 6, 12), mat);
+    kap.rotation.x = Math.PI/2; kap.castShadow = true; g.add(kap);
+    swiat.add(g); meshe[nazwa] = g; continue;
+  }
+  m.castShadow = true; swiat.add(m); meshe[nazwa] = m;
+}
+
+const suwak = document.getElementById('suwak'); suwak.max = klatki.length - 1;
+const przyciskGraj = document.getElementById('graj'), poleCzas = document.getElementById('czas');
+const wyborTempa = document.getElementById('tempo'), polePetla = document.getElementById('petla');
+let gra = true, klatka = 0, akumulator = 0;
+przyciskGraj.onclick = () => { gra = !gra; przyciskGraj.textContent = gra ? '⏸ pauza' : '▶ start'; };
+suwak.oninput = () => { klatka = +suwak.value; gra = false; przyciskGraj.textContent = '▶ start'; ustaw(klatka); };
+
+const OSZfoot = new THREE.Vector3(0,0,1);
+function ustaw(nr) {
+  const kl = klatki[nr];
+  kolejnosc.forEach((nazwa, k) => {
+    const c = kl[k], mesh = meshe[nazwa];
+    mesh.position.set(c.r[0], c.r[1], c.r[2]);
+    mesh.quaternion.set(c.p[1], c.p[2], c.p[3], c.p[0]);
+  });
+  poleCzas.textContent = (nr * DANE.dt).toFixed(2) + ' s';
+  suwak.value = nr;
+}
+let poprz = performance.now();
+function petla(teraz) {
+  requestAnimationFrame(petla);
+  const dtr = (teraz - poprz)/1000; poprz = teraz;
+  if (gra) { akumulator += dtr*(+wyborTempa.value);
+    while (akumulator >= DANE.dt) { akumulator -= DANE.dt; klatka += 1;
+      if (klatka >= klatki.length) klatka = polePetla.checked ? 0 : klatki.length-1; }
+    ustaw(klatka); }
+  kontrola.update(); renderer.render(scena, kamera);
+}
+ustaw(0); requestAnimationFrame(petla);
+addEventListener('resize', () => { kamera.aspect = innerWidth/innerHeight; kamera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+</script>
+</body>
+</html>

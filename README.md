@@ -21,9 +21,10 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
 | `przyklady/piesek.py` | mini-piesek: czworonóg w chodzie pełzającym |
 | `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
-| `przyklady/bokser.py` | kickboxing: walka z cieniem, prawy sierpowy |
+| `przyklady/bokser.py` | kickboxing: sierpowy i front kick (nogi z kolanem) |
+| `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
-| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html` |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 

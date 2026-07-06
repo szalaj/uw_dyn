@@ -19,8 +19,8 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 - `src/uw_dyn/dynamika.py`: alias zgodności wstecznej (re-eksport wszystkiego).
 - `src/uw_dyn/__init__.py`: publiczne API pakietu (jawna lista `__all__`).
 - `tests/`: pytest; `conftest.py` zawiera budowę wahadła testowego i obliczanie energii mechanicznej.
-- `przyklady/`: `lancuch02.py` (CSV), trzy przykłady kanoniczne (`przysiad.py`, `robot_kroczacy.py` compass gait → `piesek.py` czworonóg robiący przysiady `dt=0.0005`, `dron.py` kwadrokopter) oraz pokaz aktuatora `bokser.py` (walka z cieniem, prawy sierpowy); `lancuch.blend` to scena Blendera.
-- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
+- `przyklady/`: `lancuch02.py` (CSV), trzy przykłady kanoniczne (`przysiad.py`, `robot_kroczacy.py` compass gait → `piesek.py` czworonóg robiący przysiady `dt=0.0005`, `dron.py` kwadrokopter) oraz `bokser.py` (kickboxing: sierpowy + front kick, nogi ze stawem kolanowym) i `balans.py` (Etap B: pełna sylwetka na stopach z regulatorem balansu PID, `dt=2e-4`, kosztowny); `lancuch.blend` to scena Blendera.
+- `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
 - `docs/ULEPSZENIA.md`: research kierunków rozwoju biblioteki z priorytetami.
 - `docs/MSzalajski_mgr4.pdf`: praca magisterska; tu należy szukać teorii i oznaczeń.
 

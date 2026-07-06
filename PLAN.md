@@ -252,9 +252,19 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
       (mniej pasożytniczego obrotu), zestaw testów 118 → 47 s. Sufit `dt`
       figury wyznacza teraz sztywność aktuatorów/kontaktu, nie projekcja
       (dalej: integrator półniejawny/RATTLE, `docs/ULEPSZENIA.md`).
-- [ ] Regulator równowagi (NASTĘPNY KROK): sprzężenie od położenia CoM do
-      kostek (przód-tył) i bioder (bok), utrzymujące CoM nad wielobokiem
-      podparcia.
+- [x] Regulator równowagi PID — **ZROBIONE 2026-07-06**: `przyklady/balans.py`.
+      Dwie warstwy PID: (1) stawy trzymają pozę regulatorem PID (`ki` znosi
+      sag pod grawitacją → wystarcza niższa sztywność → większy krok
+      `dt=2e-4`); (2) regulator balansu PID sprzęga poziome położenie CoM
+      z kostkami (przód-tył) i biodrami (bok). Kluczowe odkrycie: sama
+      zmiana stawów na PID + rzutowanie ważone macierzą mas daje stabilne
+      stanie (dryf CoM ~5 mm/0.4 s, wcześniej przewracał się o 0.1–0.25 m).
+      Regulator balansu dokłada odporność na pchnięcie (dryf 0.23 → 0.13 m
+      pod pchnięciem 0.5 m/s). Znak sprzężenia kostki ujemny (wyznaczony
+      eksperymentalnie). Wizualizacja: `web/balans.html`. Ograniczenie:
+      model kosztowny (dt=2e-4, ~340 s symulacji na 1 s ruchu); mocnego
+      pchnięcia bez kroku w bok nie da się w pełni odrzucić.
+- [ ] Praca nóg / krok (dla pełnego odrzucania zaburzeń i lokomocji).
 - [ ] Praca nóg: krok, unik, zejście z linii — na bazie kontaktu i przenoszenia
       ciężaru.
 
