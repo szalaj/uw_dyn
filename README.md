@@ -57,6 +57,7 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
 
 - `Uklad`: klasa zbiorcza układu; metody `dodajCzlon`, `dodajWiez`, `dodajWiezD`, `dodajSileWewn`, `dodajSileZewn`, symulacja (`sym`, `sym2`), rozwiązywanie więzów metodą Newtona-Raphsona (`newraph`), rzutowanie na więzy (`projekcja_polozen`, `projekcja_predkosci`, przydatne też jako uderzenie plastyczne przy zmianie więzów), energia mechaniczna (`energia`, `energia_kinetyczna`, `energia_potencjalna`) oraz zapis wyników (`zapiszWyniki`).
 - `sym2` domyślnie stabilizuje więzy rzutowaniem (dokładne więzy, bez strojenia); klasyczne Baumgarte przez `stabilizacja='baumgarte'` z parametrami `alfa`, `beta`.
+- `sym3` to integrator typu RATTLE (Verlet prędkościowy z więzami rozwiązywanymi wewnątrz kroku): rząd 2, więzy na poziomie maszynowym, energia o rzędy wielkości dokładniejsza niż `sym2` przy tym samym koszcie, więc można użyć znacznie większego kroku. Uwaga: przy bardzo sztywnym tłumieniu na lekkich członach (pełna sylwetka z kontaktem) pozostaje `sym2`.
 - `Czlon`: człon układu zdefiniowany masą i tensorem bezwładności.
 - Więzy kinematyczne (pary kinematyczne):
   - `Para_Sferyczna`: przegub kulisty,

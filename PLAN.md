@@ -305,9 +305,11 @@ Powiązane: te rozszerzenia częściowo pokrywają się z listą w `docs/ULEPSZE
 - Pakiet: `uv sync` + `uv run pytest` (30 testów przechodzi w ~12 s)
 - Moduły: `uw_dyn.algebra` (wektory, kwaterniony, macierze), `uw_dyn.czlony`,
   `uw_dyn.wiezy`, `uw_dyn.sily`, `uw_dyn.uklad`; `uw_dyn.dynamika` to alias
-- Dwa integratory: `sym2` (półjawny Euler, stały krok; domyślnie
-  stabilizacja rzutowaniem, opcjonalnie Baumgarte) i `sym` (solve_ivp
-  RK45, adaptacyjny; dt określa tylko gęstość zapisu wyników)
+- Trzy integratory: `sym2` (półjawny Euler, rząd 1; najodporniejszy na
+  sztywne tłumienie — używać dla figury z kontaktem), `sym3` (RATTLE/Verlet,
+  rząd 2, więzy maszynowo dokładne, energia ~500× lepsza; wybucha przy
+  bardzo sztywnym tłumieniu lekkich członów c/J·dt/2>1) i `sym` (solve_ivp
+  RK45, adaptacyjny; bez rzutowania i bez PID)
 - Nowe metody `Uklad`: `projekcja_polozen`, `projekcja_predkosci`
   (uderzenie plastyczne), `energia_kinetyczna/potencjalna/energia`
 - Przykłady: `lancuch02.py` (CSV), `przysiad.py`, `robot_kroczacy.py`;

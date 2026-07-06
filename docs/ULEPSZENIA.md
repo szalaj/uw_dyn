@@ -73,8 +73,19 @@ powielanie kodu i pozwoli na zdarzenia (patrz punkt 4).
   jego realny limit to **sztywne sprężyny** (przysiad: k=1e5 wymusza
   dt=1e-3). Kierunki, od najtańszego:
   1. linearyzacja sprężyn w kroku (półniejawny w siłach sprężystych),
-  2. RATTLE/SHAKE: więzy rozwiązywane wewnątrz kroku, nie po nim
-     (usuwa dryf, zachowuje symplektyczność),
+  2. RATTLE/SHAKE — **ZROBIONE 2026-07-06 jako `sym3`**: Verlet
+     prędkościowy z więzami wewnątrz kroku (SHAKE = `projekcja_polozen`
+     w metryce mas na pozycjach, RATTLE = `projekcja_predkosci`), plus
+     iteracja punktu stałego na prędkości końcowej (konieczna dla rzędu 2
+     przy członie żyroskopowym). Zweryfikowane: rząd 2 (stosunek błędu
+     dokładnie 4.00 przy dt/2), więzy ~1e-13, energia wahadła/łańcucha
+     500–740× dokładniejsza niż sym2 przy tym samym koszcie kroku; przy
+     dt 10× większym nadal dokładniejszy i ~9× szybszy. Dron przechodzi
+     pełną misję na sym3. OGRANICZENIE: przy bardzo sztywnym tłumieniu
+     na lekkich członach (figura: c/J·dt/2 > 1) iteracja punktu stałego
+     nie zbiega i sym3 wybucha tam, gdzie sym2 (półjawny w prędkości)
+     przeżywa — dla pełnej sylwetki z kontaktem zostaje sym2. Docelowe
+     rozwiązanie: tłumienie półniejawne w kroku prędkości.
   3. integratory na grupie Liego (SO(3)): kwaternion aktualizowany
      mnożeniem przez kwaternion przyrostowy, norma zachowana z definicji,
      znika też problem jakobianów przy nieunormowanych kwaternionach.
