@@ -289,7 +289,10 @@ class MomentWzgledny:
         theta = np.arctan2(sin_cz, cos_cz)
         dtheta = float(a_g.ravel().dot((om_j - om_i).ravel()))
 
-        tau = self.k*(self.theta_cel - theta) - self.c*dtheta
+        # blad kata zawiniety do (-pi, pi] -> najkrotsza droga; bez tego kat
+        # przechodzacy przez +-pi (np. biodro ~pi) prowadzilby staw "dookola"
+        blad = (self.theta_cel - theta + np.pi) % (2*np.pi) - np.pi
+        tau = self.k*blad - self.c*dtheta
         if self.moment_max is not None:
             tau = max(-self.moment_max, min(self.moment_max, tau))
         M = tau*a_g  # moment globalny na czlon j

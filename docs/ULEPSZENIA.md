@@ -26,6 +26,15 @@ nią załatać:
   gdyby dron miał latać szybko albo pojawił się przykład lotniczy.
 - Docelowo: wspólny interfejs sił `sila(q, dq, t)` i możliwość podania
   własnej funkcji (callback), co domknie wszystkie powyższe przypadki.
+- **Człon całkujący w aktuatorach (PID)**: `MomentWzgledny`/`MomentSferyczny`
+  to dziś regulatory PD. Pod stałym obciążeniem (grawitacja) PD ma błąd
+  ustalony (staw sag poniżej celu, bo `k*błąd` musi zrównoważyć moment
+  ciężkości). Człon całkujący `ki*∫błąd dt` zniósłby ten dryf i pozwolił na
+  niższą sztywność (większy krok). Wymaga stanu (akumulator) i dostępu do
+  `dt` w `sila` (dziś go nie ma) — czyli interfejsu sił świadomego czasu
+  albo aktualizacji całki z pętli sterownika. Alternatywa: kompensacja
+  grawitacji (feedforward). Na razie obchodzimy to mocniejszymi gainami
+  (np. `K_NOGA` w bokserze dla ciężkiej nogi).
 
 ## 2. Sterowanie: callback zamiast ręcznego cięcia na segmenty
 

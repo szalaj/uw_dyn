@@ -84,6 +84,7 @@ DT = 0.0005
 K_BARK, C_BARK = 90.0, 7.0
 K_LOKIEC, C_LOKIEC = 60.0, 3.0
 K_TUL, C_TUL = 400.0, 16.0
+K_NOGA, C_NOGA = 450.0, 22.0    # biodro/kolano: ciezka noga, mocny naped
 T_GARDA = 0.6
 T_CIOS = 0.26        # sierpowy: wyprowadzenie + trafienie
 T_POWROT = 0.34      # sierpowy: powrot
@@ -191,11 +192,11 @@ def zbuduj():
         ukl.dodajWiez(Polaczenie_Obr(TUL, ud, biodro_w_tulowiu(strona),
                                      wektor(0, 0, -L_UD/2), *OSIE_NOGA))
         akt['biodro_'+strona] = MomentWzgledny(TUL, ud, wektor(0, 1, 0), REF_Z,
-                                               K_BARK, 0.0, C_BARK)
+                                               K_NOGA, 0.0, C_NOGA)
         ukl.dodajWiez(Polaczenie_Obr(ud, pd, wektor(0, 0, L_UD/2),
                                      wektor(0, 0, -L_PD/2), *OSIE_NOGA))
         akt['kolano_'+strona] = MomentWzgledny(ud, pd, wektor(0, 1, 0), REF_Z,
-                                               K_BARK, 0.0, C_BARK)
+                                               K_NOGA, 0.0, C_NOGA)
 
     for a in akt.values():
         ukl.dodajSileWewn(a)
