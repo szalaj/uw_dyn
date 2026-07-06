@@ -23,6 +23,7 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
 | `przyklady/bokser.py` | kickboxing: sierpowy i front kick (nogi z kolanem) |
 | `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
+| `przyklady/krok.py` | praca nóg: krok w bok z balansem PID (mechanika + balans; kierunkowy krok w toku) |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
 | `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html` |
 | `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |

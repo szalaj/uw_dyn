@@ -264,7 +264,19 @@ całej pozy budowanej z kierunków: kierunki odbijamy w y, a kąty flexji neguje
       eksperymentalnie). Wizualizacja: `web/balans.html`. Ograniczenie:
       model kosztowny (dt=2e-4, ~340 s symulacji na 1 s ruchu); mocnego
       pchnięcia bez kroku w bok nie da się w pełni odrzucić.
-- [ ] Praca nóg / krok (dla pełnego odrzucania zaburzeń i lokomocji).
+- [~] Praca nóg / krok w bok — **CZĘŚCIOWO 2026-07-06**: `przyklady/krok.py`.
+      Mechanika kroku złożona i działa: przeniesienie ciężaru (roll bioder),
+      uniesienie nogi (kontakt penalty sam zwalnia stopę), wymach (odwiedzenie),
+      postawienie; do tego lateralny PID (biodra) + PID przód-tył (kostki)
+      utrzymują figurę na nogach przez fazę jednonożną (bez tego przewracała
+      się). NIE osiągnięto czystego stabilnego kroku KIERUNKOWEGO: silne
+      odwiedzenie stawia stopę wyraźnie w bok (~0.2 m), ale figura osiada
+      (kolana się uginają pod dynamiką); umiarkowane trzyma balans, lecz
+      pochył równoważący ściąga nogę do środka. Sprzężenie balans↔krok wymaga
+      regulatora ustawienia stopy (capture point) i drobniejszego strojenia,
+      które blokuje koszt symulacji (dt=2e-4). Wizualizacja: `web/krok.html`.
+- [ ] Regulator ustawienia stopy (capture point) + szybszy integrator (RATTLE)
+      dla stabilnego kroku i lokomocji.
 - [ ] Praca nóg: krok, unik, zejście z linii — na bazie kontaktu i przenoszenia
       ciężaru.
 
