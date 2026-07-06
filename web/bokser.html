@@ -31,10 +31,10 @@
 <div id="scena"></div>
 <div id="panel">
   <h1>Kickboxing: walka z cieniem</h1>
-  <p>Prawy sierpowy (hook): cios łukiem w płaszczyźnie poziomej, napędzany
-     skrętem korpusu. Górna część ciała jako układ wieloczłonowy (tułów +
-     ramiona), stawy napędzane aktuatorami momentu. Sekwencja: garda →
-     wyprowadzenie ciosu → powrót do gardy.</p>
+  <p>Prawy sierpowy (hook) w 3D. Barki to napędzane stawy kuliste, łokcie
+     to zawiasy, skręt korpusu daje moc. Dzięki stawom kulistym garda jest
+     naturalna (łokcie w dół, pięści przy twarzy), a cios idzie łukiem
+     w przód i w poprzek na cień. Sekwencja: garda → cios → powrót.</p>
   <p>Prędkość pięści: <span id="vmax">0.0 m/s</span></p>
   <p>Mysz: obracanie, kółko: przybliżenie.</p>
 </div>
@@ -123,21 +123,21 @@ glowa.castShadow = true;
 tulow.add(glowa);
 swiat.add(tulow);
 
-// ramiona: kapsula wzdluz lokalnej x (obrot kapsuly Y->X)
-function czlonX(dlugosc, mat, promien) {
+// ramiona: prety wzdluz lokalnej z (bark -> lokiec -> piesc)
+function czlonZ(dlugosc, mat, promien) {
   const g = new THREE.Group();
   const m = new THREE.Mesh(
     new THREE.CapsuleGeometry(promien, dlugosc - 2*promien, 6, 12), mat);
-  m.rotation.z = -Math.PI/2;   // kapsula wzdluz lokalnej x
+  m.rotation.x = Math.PI/2;   // kapsula wzdluz lokalnej z
   m.castShadow = true;
   g.add(m);
   swiat.add(g);
   return g;
 }
-const ra_g = czlonX(W.ramie, matCialo, 0.05);
-const ra_p = czlonX(W.przedramie, matRekaw, 0.055);
-const la_g = czlonX(W.ramie, matCialo, 0.05);
-const la_p = czlonX(W.przedramie, matRekaw, 0.055);
+const ra_g = czlonZ(W.ramie, matCialo, 0.05);
+const ra_p = czlonZ(W.przedramie, matRekaw, 0.055);
+const la_g = czlonZ(W.ramie, matCialo, 0.05);
+const la_p = czlonZ(W.przedramie, matRekaw, 0.055);
 
 // piesci (rekawice) na koncach przedramion
 function rekawica() {
@@ -180,20 +180,20 @@ cien.add(cienTul);
 const cienGlowa = new THREE.Mesh(
   new THREE.SphereGeometry(0.13, 16, 12),
   new THREE.MeshStandardMaterial({ color: 0x05070a, transparent: true, opacity: 0.5 }));
-cienGlowa.position.set(0, 0, 1.5);
+cienGlowa.position.set(0, 0, 1.4);
 cien.add(cienGlowa);
-cien.position.set(0.5, 0, 0);   // przed bokserem, na zasieg sierpowego (piesc dochodzi do ~0.40)
+cien.position.set(0.40, 0.14, 0);   // tam, gdzie laduje sierpowy (piesc ~0.34,0.14,1.35)
 swiat.add(cien);
 
-// os z symulacji: ustaw pozycje/orientacje czlonow
-const OSX = new THREE.Vector3(1, 0, 0);
+// czlony ramion sa pretami wzdluz lokalnej z; piesc = koniec +z
+const OSZ = new THREE.Vector3(0, 0, 1);
 function ustawX(grupa, r, p, dlugosc) {
   grupa.position.set(r[0], r[1], r[2]);
   grupa.quaternion.set(p[1], p[2], p[3], p[0]);
 }
 function koniecX(r, p, dl) {
   const q = new THREE.Quaternion(p[1], p[2], p[3], p[0]);
-  return new THREE.Vector3(...r).add(OSX.clone().applyQuaternion(q).multiplyScalar(dl/2));
+  return new THREE.Vector3(...r).add(OSZ.clone().applyQuaternion(q).multiplyScalar(dl/2));
 }
 
 // --- predkosc piesci (dla odczytu) ---
@@ -202,9 +202,9 @@ function predkoscR(nr) {
   if (nr === 0) return 0;
   const a = klatki[nr][I.ra_p], b = klatki[nr-1][I.ra_p];
   const qa = new THREE.Quaternion(a.p[1],a.p[2],a.p[3],a.p[0]);
-  const pa = new THREE.Vector3(...a.r).add(OSX.clone().applyQuaternion(qa).multiplyScalar(W.przedramie/2));
+  const pa = new THREE.Vector3(...a.r).add(OSZ.clone().applyQuaternion(qa).multiplyScalar(W.przedramie/2));
   const qb = new THREE.Quaternion(b.p[1],b.p[2],b.p[3],b.p[0]);
-  const pb = new THREE.Vector3(...b.r).add(OSX.clone().applyQuaternion(qb).multiplyScalar(W.przedramie/2));
+  const pb = new THREE.Vector3(...b.r).add(OSZ.clone().applyQuaternion(qb).multiplyScalar(W.przedramie/2));
   return pa.distanceTo(pb)/dt;
 }
 

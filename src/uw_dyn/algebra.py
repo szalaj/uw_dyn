@@ -71,6 +71,38 @@ def sprzezenie_kwaternionu(p):
     return np.array([a[0], -a[1], -a[2], -a[3]])
 
 
+# kwaternion (parametry Eulera) z macierzy obrotu (odwrotnosc R(p))
+def macierz_na_kwaternion(Rm):
+    Rm = np.asarray(Rm, dtype=float)
+    tr = Rm[0,0] + Rm[1,1] + Rm[2,2]
+    if tr > 0:
+        s = 2.0*np.sqrt(tr + 1.0)
+        e0 = 0.25*s
+        e1 = (Rm[2,1] - Rm[1,2])/s
+        e2 = (Rm[0,2] - Rm[2,0])/s
+        e3 = (Rm[1,0] - Rm[0,1])/s
+    elif Rm[0,0] >= Rm[1,1] and Rm[0,0] >= Rm[2,2]:
+        s = 2.0*np.sqrt(1.0 + Rm[0,0] - Rm[1,1] - Rm[2,2])
+        e0 = (Rm[2,1] - Rm[1,2])/s
+        e1 = 0.25*s
+        e2 = (Rm[0,1] + Rm[1,0])/s
+        e3 = (Rm[0,2] + Rm[2,0])/s
+    elif Rm[1,1] >= Rm[2,2]:
+        s = 2.0*np.sqrt(1.0 + Rm[1,1] - Rm[0,0] - Rm[2,2])
+        e0 = (Rm[0,2] - Rm[2,0])/s
+        e1 = (Rm[0,1] + Rm[1,0])/s
+        e2 = 0.25*s
+        e3 = (Rm[1,2] + Rm[2,1])/s
+    else:
+        s = 2.0*np.sqrt(1.0 + Rm[2,2] - Rm[0,0] - Rm[1,1])
+        e0 = (Rm[1,0] - Rm[0,1])/s
+        e1 = (Rm[0,2] + Rm[2,0])/s
+        e2 = (Rm[1,2] + Rm[2,1])/s
+        e3 = 0.25*s
+    p = np.array([e0, e1, e2, e3])
+    return p/np.linalg.norm(p)
+
+
 # wektor obrotu (os * kat) z kwaternionu; wybiera obrot krotszy (kat w [0,pi])
 def kwaternion_na_wektor_obrotu(p):
     a = np.asarray(p, dtype=float).ravel()

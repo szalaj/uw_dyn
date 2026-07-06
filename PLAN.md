@@ -66,13 +66,17 @@ Wszystkie pokryte testami (40 testów). Dalsze kierunki: `docs/ULEPSZENIA.md`.
 
 - **Bokser** (`przyklady/bokser.py` + `web/bokser.html`): kickboxing, walka
   z cieniem, prawy sierpowy. Gorna czesc ciala (tulow + 2 ramiona po 2 czlony,
-  5 czlonow) sterowana aktuatorami `MomentWzgledny`; sekwencja garda ->
-  wyprowadzenie ciosu -> powrot. Sierpowy to ruch poziomy, wiec WSZYSTKIE osie
-  obrotu sa pionowe (z), a czlony ramion rozciagaja sie wzdluz lokalnej osi x
-  (grawitacja nie daje momentu wzgledem pionu -> wiez trzyma ramie bez
-  oklapniecia; jeden przegub obrotowy nie zlapie 3D barku, stad plaszczyzna
-  pozioma). Zweryfikowane: garda piesc przy brodzie (x=0.16), szczyt ciosu
-  x=0.40 z obrotem tulowia o 46 st. `dt=0.0005` (sztywne aktuatory).
+  5 czlonow); sekwencja garda -> wyprowadzenie ciosu -> powrot.
+  **Przebudowany na model 3D (2026-07-06):** barki to napedzane stawy kuliste
+  (`Para_Sferyczna` + `MomentSferyczny`), lokcie to zawiasy (`Polaczenie_Obr`
+  + `MomentWzgledny`), pas to przegub obrotowy wokol pionu (skret korpusu).
+  Czlony ramion to prety wzdluz lokalnej z; orientacje ramion buduje
+  `orientacja(dz, dx)` z kierunku, cele sterowania interpoluje slerp.
+  Dzieki stawom kulistym garda jest NATURALNA (lokcie w dol, piesci przy
+  twarzy), a cios idzie lukiem w przod i w poprzek na cien.
+  Zweryfikowane: garda piesc przy policzku (0.17, -0.08, 1.41), szczyt ciosu
+  (0.34, 0.14, 1.35) z uniesionym lokciem i obrotem korpusu (yaw 0.28 -> 0.60,
+  CCW). `dt=0.0005`. Poprzednia wersja (plaszczyzna pozioma) w historii gita.
 
 ## Decyzje architektoniczne (ustalone z Marcinem)
 
@@ -191,8 +195,8 @@ drogowa; kolejność od najtańszego i najbardziej fundamentalnego.
       grawitacją. Bark i biodro modelujemy teraz jako staw kulisty, łokieć/
       kolano jako `Polaczenie_Obr` (1 DOF). 8 testów (`test_staw_kulisty.py`).
       To odblokowuje naturalne pozy (garda z łokciami w dół), których
-      `bokser.py` nie ma (płaszczyzna pozioma) — następny krok: przebudować
-      boksera na stawy kuliste w barkach.
+      `bokser.py` nie miał (płaszczyzna pozioma). **ZROBIONE 2026-07-06:**
+      `bokser.py` przebudowany na barki kuliste — garda jest teraz naturalna.
 - [ ] Limity zakresu ruchu w stawach (miękkie ograniczniki: jednostronna
       sprężyna-tłumik przy przekroczeniu kąta granicznego).
 - [ ] Model „mięśni/napędów" stawów: aktuator momentu z ograniczeniem

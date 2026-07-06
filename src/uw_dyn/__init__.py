@@ -18,6 +18,7 @@ from uw_dyn.algebra import (
     mnoz_kwaterniony,
     sprzezenie_kwaternionu,
     kwaternion_na_wektor_obrotu,
+    macierz_na_kwaternion,
 )
 from uw_dyn.czlony import Czlon
 from uw_dyn.wiezy import (
@@ -45,4 +46,5 @@ __all__ = [
     "wektor", "wektor_p", "r_i", "dr_i", "p_i", "dp_i",
     "u2p", "EA_to_EP", "R", "G", "dG", "skew",
     "mnoz_kwaterniony", "sprzezenie_kwaternionu", "kwaternion_na_wektor_obrotu",
+    "macierz_na_kwaternion",
 ]
