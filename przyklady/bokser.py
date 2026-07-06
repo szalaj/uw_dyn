@@ -12,11 +12,13 @@
 # Orientacje ramion zadaje sie kierunkiem (funkcja `orientacja`), a cele
 # sterowania interpoluje slerpem miedzy garda a sierpowym.
 #
-# Nogi: udo + podudzie z biodrem i STAWEM KOLANOWYM (zawiasy wokol osi y),
+# Nogi: udo + podudzie z biodrem i stawem kolanowym (zawiasy wokol osi y),
 # w ugietej postawie atletycznej (masy z antropometrii). Miednica przypieta,
-# wiec nogi na razie trzymaja postawe (baza pod przyszle kopniecia/kolana).
+# noga podporowa trzyma postawe podczas kopniecia.
 #
-# Sekwencja: garda -> wyprowadzenie ciosu -> powrot. Glowa rysowana pogladowo.
+# Sekwencja: garda -> prawy sierpowy -> powrot -> front kick tylna noga
+# (kolano w gore, wyprost stopa w przod, zloz, powrot). Glowa rysowana
+# pogladowo. Kopniecie steruje biodrem i kolanem tak, jak sierpowy barkiem.
 #
 # Wynik: web/dane_bokser.js do wizualizacji Three.js (web/bokser.html).
 
@@ -83,10 +85,18 @@ K_BARK, C_BARK = 90.0, 7.0
 K_LOKIEC, C_LOKIEC = 60.0, 3.0
 K_TUL, C_TUL = 400.0, 16.0
 T_GARDA = 0.6
-T_CIOS = 0.26        # wyprowadzenie + trafienie
-T_POWROT = 0.34
-T_KONIEC = 0.7
-CZAS = T_GARDA + T_CIOS + T_POWROT + T_KONIEC
+T_CIOS = 0.26        # sierpowy: wyprowadzenie + trafienie
+T_POWROT = 0.34      # sierpowy: powrot
+T_MIEDZY = 0.5       # przerwa miedzy sierpowym a kopnieciem
+# front kick (tylna noga): kolano w gore, wyprost, zlozenie, powrot
+T_CHAMBER = 0.18
+T_STRIKE = 0.10
+T_ZLOZ = 0.10
+T_KICK_POW = 0.34
+T_KONIEC = 0.6
+CZAS = (T_GARDA + T_CIOS + T_POWROT + T_MIEDZY
+        + T_CHAMBER + T_STRIKE + T_ZLOZ + T_KICK_POW + T_KONIEC)
+T_KICK0 = T_GARDA + T_CIOS + T_POWROT + T_MIEDZY   # poczatek kopniecia
 
 
 # ---------- pomocnicze: orientacje i slerp ----------
@@ -261,6 +271,58 @@ def sterowanie(t, akt, p_bark_R_g, p_bark_R_h):
     # lewa reka i tak trzyma garde (cele ustawione przy budowie)
 
 
+def _lerp(a, b, f):
+    return a + (b - a)*f
+
+
+def sterowanie_kopniecie(t, akt, kick):
+    """Front kick tylna noga (P): chamber -> wyprost -> zloz -> powrot.
+    kick = {'stance':(hip,knee), 'chamber':..., 'strike':...}."""
+    st, ch, sr = kick['stance'], kick['chamber'], kick['strike']
+    tl = t - T_KICK0
+    if tl < 0:
+        para = st
+    elif tl < T_CHAMBER:                      # stance -> chamber
+        f = _ramp(tl, 0, T_CHAMBER)
+        para = (_lerp(st[0], ch[0], f), _lerp(st[1], ch[1], f))
+    elif tl < T_CHAMBER + T_STRIKE:           # chamber -> wyprost (uderzenie)
+        f = _ramp(tl, T_CHAMBER, T_STRIKE)
+        para = (_lerp(ch[0], sr[0], f), _lerp(ch[1], sr[1], f))
+    elif tl < T_CHAMBER + T_STRIKE + T_ZLOZ:  # wyprost -> chamber (zloz)
+        f = _ramp(tl, T_CHAMBER + T_STRIKE, T_ZLOZ)
+        para = (_lerp(sr[0], ch[0], f), _lerp(sr[1], ch[1], f))
+    else:                                     # chamber -> stance (powrot)
+        f = _ramp(tl, T_CHAMBER + T_STRIKE + T_ZLOZ, T_KICK_POW)
+        para = (_lerp(ch[0], st[0], f), _lerp(ch[1], st[1], f))
+    akt['biodro_P'].theta_cel, akt['kolano_P'].theta_cel = para
+
+
+def cele_kopniecia(akt):
+    """Cele hip/kolano tylnej nogi (P) dla klatek: stance, chamber, uderzenie.
+    Liczone jako kat zmierzony w danej pozie (punkt staly, bez zgadywania)."""
+    def q_noga(lean, knee):
+        q = q_startowe(YAW_TUL_G, {s: (orientacja(G[s]['dz'], G[s]['dx']),
+                                       G[s]['flex']) for s in ('R', 'L')})
+        b = 3*N_CZLONOW
+        p_tul = q[b + 4*(TUL-1):b + 4*(TUL-1)+4]
+        q[b + 4*(UD_P-1):b + 4*(UD_P-1)+4] = mnoz_kwaterniony(p_tul, u2p(OS_Y, np.pi-lean))
+        q[b + 4*(PD_P-1):b + 4*(PD_P-1)+4] = mnoz_kwaterniony(p_tul, u2p(OS_Y, np.pi-lean+knee))
+        return q
+    def para(lean, knee):
+        q = q_noga(lean, knee)
+        return (akt['biodro_P'].kat(q, N_CZLONOW), akt['kolano_P'].kat(q, N_CZLONOW))
+    return {'stance': para(HIP_FLEX, KNEE_FLEX),
+            'chamber': para(1.5, 1.7),
+            'strike': para(1.5, 0.15)}
+
+
+def stopa_prawa(q):
+    """Pozycja prawej stopy (koniec podudzia P)."""
+    r = q[3*(PD_P-1):3*(PD_P-1)+3]
+    p = q[3*N_CZLONOW + 4*(PD_P-1):3*N_CZLONOW + 4*(PD_P-1)+4]
+    return r + _os_z(p)*L_PD/2
+
+
 def piesc_prawa(q):
     r = q[3*(RA_P-1):3*(RA_P-1)+3]
     p = q[3*N_CZLONOW + 4*(RA_P-1):3*N_CZLONOW + 4*(RA_P-1)+4]
@@ -275,11 +337,13 @@ def symuluj():
 
     p_bark_R_g = orientacja(G['R']['dz'], G['R']['dx'])
     p_bark_R_h = orientacja(H_R['dz'], H_R['dx'])
+    kick = cele_kopniecia(akt)
 
     klatki = []
     t = 0.0
     for _ in range(int(CZAS/SEGMENT)):
         sterowanie(t, akt, p_bark_R_g, p_bark_R_h)
+        sterowanie_kopniecie(t, akt, kick)
         ukl.sym2(np.concatenate((q, dq)), 0.0, SEGMENT, DT)
         Y = ukl.Y
         for w in Y[:-1]:
@@ -327,6 +391,13 @@ if __name__ == '__main__':
     print('garda:  piesc R = (%.2f, %.2f, %.2f)' % tuple(piesci[i_g]))
     print('szczyt: piesc R = (%.2f, %.2f, %.2f) w t=%.2f s' % (*piesci[i_h], i_h*DT))
     print('szczytowa predkosc piesci: %.1f m/s' % predk.max())
+
+    stopy = np.array([stopa_prawa(q) for q in klatki])
+    predk_st = np.linalg.norm(np.diff(stopy, axis=0), axis=1)/DT
+    i_k = int(np.argmax(stopy[:, 0]))     # najdalszy zasieg stopy w przod
+    print('kopniecie: stopa najdalej x=%.2f m (z=%.2f) w t=%.2f s' %
+          (stopy[i_k, 0], stopy[i_k, 2], i_k*DT))
+    print('szczytowa predkosc stopy: %.1f m/s' % predk_st.max())
     print('brak NaN:', not np.isnan(np.array(klatki)).any())
 
     sciezka = os.path.join(os.path.dirname(os.path.abspath(__file__)),
