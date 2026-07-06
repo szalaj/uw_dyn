@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 # Przyklad: kickboxing na worku. Prawy sierpowy + front kick (model 3D).
 #
-# Worek bokserski jest PRAWDZIWYM CIALEM: wahadlem z masa podwieszonym
-# stawem kulistym do zaczepu. Ciosy trafiaja w niego przez kontakt penalty
-# bryla-bryla (SilaUderzenia: punkt piesci/stopy vs kapsula worka), wiec
-# uderzenie przekazuje ped i wprawia worek w wahniecie - nie jest to juz
-# walka z cieniem, lecz realne trafianie w cel z bezwladnoscia.
+# Worek bokserski jest PRAWDZIWYM CIALEM: cieznym wahadlem (22 kg)
+# podwieszonym stawem kulistym z TLUMIENIEM przegubu (MomentSferyczny k=0,
+# c>0), wiec po uderzeniu wychyla sie i realistycznie wraca do pionu, a nie
+# buja bez konca. Ciosy trafiaja przez kontakt penalty bryla-bryla
+# (SilaUderzenia: punkt piesci/stopy vs kapsula worka) - uderzenie przekazuje
+# ped i mierzy sile/impuls. To realne trafianie w cel z bezwladnoscia, nie
+# walka z cieniem.
 #
 # Wersja anatomiczna na stawach kulistych (Etap A): barki to napedzane stawy
 # kuliste 3 DOF (Para_Sferyczna + MomentSferyczny), lokcie to zawiasy 1 DOF
@@ -62,13 +64,14 @@ WOREK = 10                       # worek bokserski jako prawdziwe cialo (wahadlo
 N_CZLONOW = 10
 
 # ----- worek bokserski (wahadlo z masa, podwieszone stawem kulistym) -----
-M_WOREK = 12.0                   # masa worka [kg] (lekki worek treningowy)
+M_WOREK = 22.0                   # masa worka [kg] (realistyczny worek treningowy)
 R_WOREK = 0.22                   # promien worka [m] (szeroki, by hak i kopniecie sie zmiescily)
 H_WOREK = 0.90                   # wysokosc worka [m]
 X_WOREK = 0.50                   # odleglosc worka przed bokserem (os x) [m]
-Z_ZACZEP = 1.55                  # wysokosc zaczepienia liny (staw kulisty) [m]
+Z_ZACZEP = 1.55                  # przegub kulisty (gora worka) [m]
 Z_WOREK = Z_ZACZEP - H_WOREK/2   # srodek masy worka w spoczynku
 PROM_KONTAKT = R_WOREK + PROM    # promien kontaktu piesc/stopa - worek
+C_PRZEGUB = 30.0                 # tlumienie przegubu (wahania zanikaja, powrot do pionu)
 
 OS_Z = np.array([0.0, 0.0, 1.0])
 OS_Y = np.array([0.0, 1.0, 0.0])
@@ -225,10 +228,12 @@ def zbuduj():
     for a in akt.values():
         ukl.dodajSileWewn(a)
 
-    # worek bokserski: wahadlo z masa podwieszone stawem kulistym do zaczepu
+    # worek bokserski: cialo z masa podwieszone przegubem kulistym do zaczepu,
+    # z tlumieniem obrotowym w przegubie (wahania zanikaja -> realistyczny powrot)
     ukl.dodajCzlon(Czlon(WOREK, M_WOREK, tensor_worka()))
     ukl.dodajWiez(Para_Sferyczna(0, WOREK, wektor(X_WOREK, 0, Z_ZACZEP),
-                                 wektor(0, 0, H_WOREK/2)))    # zaczep u gory worka
+                                 wektor(0, 0, H_WOREK/2)))
+    ukl.dodajSileWewn(MomentSferyczny(0, WOREK, 0.0, C_PRZEGUB))  # tlumik przegubu
     # kontakt penalty: piesc (przedramie P) i stopa (podudzie P) uderzaja w worek
     kontakty = {
         'piesc': SilaUderzenia(RA_P, wektor(0, 0, L_FA/2), WOREK,
