@@ -16,7 +16,7 @@ Teoria i oznaczenia: opis metody powyżej oraz w komentarzach kodu źródłowego
 |------|------|
 | `src/uw_dyn/` | pakiet: moduły `algebra`, `czlony`, `wiezy`, `sily`, `uklad` |
 | `tests/` | testy pytest: algebra, walidacja fizyczna, rzutowanie, energia |
-| `przyklady/przysiad.py` | staw kolanowy podczas przysiadu (mięśnie sprężysto-tłumiące) |
+| `przyklady/przysiad.py` | staw kolanowy podczas przysiadu (mięśnie sprężysto-tłumiące) + biomechanika kolana: siła czworogłowego przez rzepkę, siła rzepkowo-udowa (PFJ), kompresja i ścinanie piszczeli (ACL/PCL) w funkcji zgięcia |
 | `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
 | `przyklady/bokser.py` | kickboxing na worku: sierpowy i front kick; worek to wahadło z masą, ciosy trafiają w nie przez kontakt bryła-bryła |
 | `web/` | wizualizacje Three.js: `przysiad.html`, `dron.html`, `bokser.html` |

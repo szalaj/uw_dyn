@@ -19,7 +19,7 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 - `src/uw_dyn/dynamika.py`: alias zgodności wstecznej (re-eksport wszystkiego).
 - `src/uw_dyn/__init__.py`: publiczne API pakietu (jawna lista `__all__`).
 - `tests/`: pytest; `conftest.py` zawiera budowę wahadła testowego i obliczanie energii mechanicznej.
-- `przyklady/`: `przysiad.py` (staw kolanowy podczas przysiadu, mięśnie sprężysto-tłumiące), `dron.py` (kwadrokopter z ładunkiem na linie) oraz `bokser.py` (kickboxing: sierpowy + front kick, nogi ze stawem kolanowym; worek to prawdziwe ciało/ciężkie wahadło 22 kg z tłumionym przegubem (`MomentSferyczny` k=0 jako tłumik, worek wraca do pionu), kontaktem `SilaUderzenia` i metrykami uderzenia).
+- `przyklady/`: `przysiad.py` (staw kolanowy podczas przysiadu, mięśnie sprężysto-tłumiące; warstwa biomechaniki kolana liczy z bilansu momentu obciążenia stawu w funkcji zgięcia: ścięgno rzepki `F_pt=M/ramię_rzepki(θ)`, czworogłowy, siła rzepkowo-udowa PFJ, kompresja i ścinanie piszczeli z przejściem ACL→PCL; parametry to stylizowane dopasowania z piśmiennictwa, model łączy obie nogi), `dron.py` (kwadrokopter z ładunkiem na linie) oraz `bokser.py` (kickboxing: sierpowy + front kick, nogi ze stawem kolanowym; worek to prawdziwe ciało/ciężkie wahadło 22 kg z tłumionym przegubem (`MomentSferyczny` k=0 jako tłumik, worek wraca do pionu), kontaktem `SilaUderzenia` i metrykami uderzenia).
 - `web/`: wizualizacje Three.js (`przysiad.html`, `dron.html`, `bokser.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
 - `docs/ULEPSZENIA.md`: research kierunków rozwoju biblioteki z priorytetami.
 

@@ -25,6 +25,16 @@
   select { background: #1b2330; color: #e8e8e8; border: 1px solid #2a3442;
            border-radius: 6px; padding: 4px; }
   #czas { font-variant-numeric: tabular-nums; font-size: 13px; width: 60px; }
+  #obc { position: absolute; right: 12px; top: 12px; width: 250px; padding: 12px 14px;
+         background: rgba(16,20,26,.82); border: 1px solid #2a3442; border-radius: 10px; }
+  #obc h2 { font-size: 13px; margin: 0 0 4px; }
+  #obc .podtyt { font-size: 11px; color: #6f8296; margin: 0 0 8px; }
+  .row { margin: 7px 0; font-size: 12px; }
+  .row .lab { display: flex; justify-content: space-between; color: #9fb0c3; }
+  .row .lab b { color: #e8e8e8; font-variant-numeric: tabular-nums; }
+  .bar { height: 7px; margin-top: 3px; background: #232d3c; border-radius: 4px; overflow: hidden; }
+  .bar > div { height: 100%; width: 0; border-radius: 4px; transition: width .05s linear; }
+  #wiez { font-size: 12px; margin-top: 10px; color: #9fb0c3; }
 </style>
 </head>
 <body>
@@ -34,8 +44,22 @@
   <p>Model wieloczłonowy (uw_dyn): podudzie, udo i tułów połączone
      przegubami obrotowymi. Mięśnie jako elementy sprężysto-tłumiące
      ściągają postać ze stania do przysiadu.</p>
+  <p>Panel po prawej: biomechanika kolana. Prostownik czworogłowy działa
+     przez rzepkę (zmienne ramię momentu), a siła rzepkowo-udowa (PFJ)
+     rośnie z głębokością szybciej niż sam czworogłowy.</p>
   <p>Zgięcie kolana: <span id="kolano">0°</span></p>
   <p>Mysz: obracanie, kółko: przybliżenie.</p>
+</div>
+<div id="obc">
+  <h2>Obciążenie kolana</h2>
+  <p class="podtyt">na jeden staw; BW = ciężar ciała</p>
+  <div class="row"><div class="lab"><span>Czworogłowy</span><b id="v_q">0 N</b></div>
+    <div class="bar"><div id="b_q" style="background:#4f8edb"></div></div></div>
+  <div class="row"><div class="lab"><span>Rzepkowo-udowa (PFJ)</span><b id="v_pfj">0 N</b></div>
+    <div class="bar"><div id="b_pfj" style="background:#ff6b6b"></div></div></div>
+  <div class="row"><div class="lab"><span>Kompresja piszczeli</span><b id="v_kom">0 N</b></div>
+    <div class="bar"><div id="b_kom" style="background:#7bd88f"></div></div></div>
+  <div id="wiez">Ścinanie piszczeli: <b id="v_sc">0 N</b> <span id="v_wiez"></span></div>
 </div>
 <div id="sterowanie">
   <button id="graj">⏸ pauza</button>
@@ -207,6 +231,26 @@ function ustawKlatke(nr) {
   const t1 = katY(kl[0].p), t2 = katY(kl[1].p);
   poleKolano.textContent = ((t1 - t2) * 180 / Math.PI).toFixed(0) + '°';
   poleCzas.textContent = (nr * DANE.dt).toFixed(2) + ' s';
+
+  // biomechanika: obciazenia stawu kolanowego
+  const ob = DANE.obciazenia[nr];
+  const BW = DANE.ciezar_ciala, SKALA = 6 * BW;   // pelny pasek = 6 BW
+  const ustawBar = (bid, vid, val) => {
+    document.getElementById(bid).style.width = Math.min(100, 100*val/SKALA) + '%';
+    document.getElementById(vid).textContent =
+      Math.round(val) + ' N (' + (val/BW).toFixed(1) + ' BW)';
+  };
+  ustawBar('b_q', 'v_q', ob.F_q);
+  ustawBar('b_pfj', 'v_pfj', ob.F_pfj);
+  ustawBar('b_kom', 'v_kom', ob.kompresja);
+  document.getElementById('v_sc').textContent = Math.abs(ob.scinanie).toFixed(0) + ' N';
+  const w = document.getElementById('v_wiez');
+  w.textContent = ob.scinanie >= 0 ? '→ ACL (przednie)' : '→ PCL (tylne)';
+  w.style.color = ob.scinanie >= 0 ? '#ffb454' : '#7bd8ff';
+  // kolano ciemnieje do czerwieni wraz z sila rzepkowo-udowa
+  const g = Math.max(0, 0.32 * (1 - Math.min(1, ob.F_pfj/SKALA)));
+  stawKolanowy.material.color.setRGB(1, g, g);
+
   suwak.value = nr;
 }
 

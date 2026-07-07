@@ -197,10 +197,91 @@ def symuluj(t_kon=5.0, dt=0.001, l0_lista=None):
     return ukl
 
 
+# ============================================================
+# Biomechanika kolana: obciazenia stawu podczas przysiadu
+# ============================================================
+# Sagittalny model prostownika kolana. Zewnetrzny moment zginajacy kolano
+# (ciezar ciala na ramieniu poziomym od stawu do pionu przez srodek masy)
+# rownowazy miesien czworoglowy dzialajacy przez RZEPKE - bloczek, ktory
+# zmienia ramie momentu sciegna rzepki wraz z katem zgiecia. Z bilansu momentu
+# liczymy:
+#   - napiecie sciegna rzepki   F_pt = M_kolano / ramie_rzepki(theta),
+#   - sile czworoglowego        F_q  = F_pt * (F_q/F_pt zalezne od kata),
+#   - sile rzepkowo-udowa (PFJ) F_pfj = wypadkowa napiec sciegna rzepki i
+#     czworoglowego dociskajaca rzepke do klyci udowej (rosnie z zgieciem),
+#   - kompresje i scinanie piszczeli (scinanie przednie obciaza ACL,
+#     tylne PCL; kierunek zmienia sie z glebokoscia przysiadu).
+# Parametry (ramie rzepki, kat sciegna do piszczeli) to stylizowane
+# dopasowania z pismiennictwa biomechanicznego (plaszczyzna strzalkowa;
+# model laczy obie nogi, wiec obciazenie na jedno kolano = wartosc / 2).
+
+MASA_CIALA = M1 + M2 + M3          # [kg]
+CIEZAR = MASA_CIALA * GRAW         # [N]
+
+
+def _srodek_masy_x(q):
+    N = 3
+    x = sum(M * q[3*k] for k, M in enumerate((M1, M2, M3)))
+    return x / MASA_CIALA
+
+
+def _kolano_x(q):
+    """Wspolrzedna x stawu kolanowego (gora podudzia) z konfiguracji q."""
+    p1 = q[3*3 + 0:3*3 + 4]
+    return float(R(wektor_p(*p1)).dot(wektor(0, 0, L1)).ravel()[0])  # kostka w (0,0,0)
+
+
+def kat_zgiecia_kolana(q):
+    """Kat zgiecia kolana [rad] (0 = pelny wyprost)."""
+    t = katy_z_q(q)
+    return t[0] - t[1]                                        # podudzie - udo
+
+
+def moment_kolana(q):
+    """Zewnetrzny moment prostujacy kolano [N*m] (quasi-statycznie): ciezar
+    ciala razy poziome ramie od kolana do pionu przez srodek masy. Dodatni,
+    gdy kolano jest przed srodkiem masy (typowo w przysiadzie)."""
+    return CIEZAR * (_kolano_x(q) - _srodek_masy_x(q))
+
+
+def ramie_rzepki(theta):
+    """Ramie momentu sciegna rzepki [m] wg kata zgiecia (bloczek rzepki):
+    szczyt ~4.9 cm przy lekkim zgieciu, malejace w glebokim."""
+    return max(0.030, 0.049 - 0.006 * (theta - 0.40) ** 2)
+
+
+def _stosunek_czworoglowy(theta):
+    """F_czworoglowy / F_sciegno_rzepki (rosnie z glebokoscia zgiecia)."""
+    return 1.0 + 0.18 * theta
+
+
+def _kat_sciegna_do_piszczeli(theta):
+    """Kat sciegna rzepki do osi piszczeli [rad]: dodatni (przod, ACL) przy
+    malym zgieciu, przechodzi w ujemny (tyl, PCL) w glebokim przysiadzie."""
+    return 0.35 - 0.29 * theta
+
+
+def obciazenia_kolana(q):
+    """Obciazenia stawu kolanowego w konfiguracji q (model obu nog laczne)."""
+    theta = kat_zgiecia_kolana(q)
+    M = moment_kolana(q)
+    r_pt = ramie_rzepki(theta)
+    F_pt = max(0.0, M) / r_pt                                # sciegno rzepki
+    F_q = F_pt * _stosunek_czworoglowy(theta)               # czworoglowy
+    # sila rzepkowo-udowa: wypadkowa dwoch napiec pod katem = zgieciu kolana
+    F_pfj = np.sqrt(F_q**2 + F_pt**2 - 2*F_q*F_pt*np.cos(theta))
+    a = _kat_sciegna_do_piszczeli(theta)
+    scinanie = F_pt * np.sin(a)                              # >0 ACL, <0 PCL
+    kompresja = F_pt * np.cos(a) + 0.5 * CIEZAR * np.cos(theta)   # udowo-piszcz.
+    return {'theta': theta, 'M': M, 'F_pt': F_pt, 'F_q': F_q,
+            'F_pfj': F_pfj, 'scinanie': scinanie, 'kompresja': kompresja}
+
+
 def eksportuj(ukl, dt, co_ile=20, plik='web/dane_przysiad.js'):
     """Zapis klatek animacji jako plik JS (const DANE = {...})."""
     N = 3
     klatki = []
+    obciazenia = []
     for wiersz in ukl.Y[::co_ile]:
         q = wiersz[0:7 * N]
         czlony = []
@@ -210,12 +291,22 @@ def eksportuj(ukl, dt, co_ile=20, plik='web/dane_przysiad.js'):
             czlony.append({'r': [round(v, 5) for v in r],
                            'p': [round(v, 6) for v in p]})
         klatki.append(czlony)
+        ob = obciazenia_kolana(q)
+        obciazenia.append({                       # na JEDNO kolano (model/2)
+            'zgiecie': round(np.degrees(ob['theta']), 1),
+            'F_q': round(0.5 * ob['F_q'], 0),
+            'F_pfj': round(0.5 * ob['F_pfj'], 0),
+            'kompresja': round(0.5 * ob['kompresja'], 0),
+            'scinanie': round(0.5 * ob['scinanie'], 0),
+        })
 
     dane = {
         'dt': dt * co_ile,
         'dlugosci': [L1, L2, L3],
         'nazwy': ['podudzie', 'udo', 'tulow'],
+        'ciezar_ciala': round(CIEZAR, 0),
         'klatki': klatki,
+        'obciazenia': obciazenia,
     }
     katalog = os.path.dirname(os.path.abspath(plik))
     os.makedirs(katalog, exist_ok=True)
@@ -236,6 +327,35 @@ if __name__ == '__main__':
         print(f'  {n}    {a:8.1f}  {b:8.1f}  {c:8.1f}')
     zgiecie_kolana = katyK[0] - katyK[1]
     print(f'zgiecie kolana na koncu: {zgiecie_kolana:.1f} stopni')
+
+    # --- biomechanika kolana: obciazenia w trakcie schodzenia (na 1 kolano) ---
+    BW = CIEZAR
+    print(f'\nObciazenia stawu kolanowego (na jedno kolano; ciezar ciala '
+          f'BW = {BW:.0f} N):')
+    print('  zgiecie   czworoglowy      PFJ        kompresja     scinanie')
+    print('  [deg]      [N]  [xBW]   [N]  [xBW]      [N]        [N]  (ACL/PCL)')
+    proby, ostatni = [], None
+    for wiersz in ukl.Y:
+        ob = obciazenia_kolana(wiersz[0:21])
+        proby.append(ob)
+    # probkuj co ~15 stopni zgiecia rosnaco
+    pokazane = set()
+    for ob in proby:
+        krok = int(np.degrees(ob['theta']) // 15)
+        if krok in pokazane or ob['theta'] < 0.05:
+            continue
+        pokazane.add(krok)
+        d = np.degrees(ob['theta'])
+        Fq, Fp, Kc, Sc = (0.5*ob['F_q'], 0.5*ob['F_pfj'],
+                          0.5*ob['kompresja'], 0.5*ob['scinanie'])
+        wiez = 'ACL' if Sc > 0 else 'PCL'
+        print(f'  {d:5.0f}    {Fq:6.0f} {Fq/BW:5.2f}  {Fp:6.0f} {Fp/BW:5.2f}   '
+              f'{Kc:8.0f}   {Sc:+7.0f}  {wiez}')
+    # szczyty
+    F_pfj_max = max(0.5*ob['F_pfj'] for ob in proby)
+    F_q_max = max(0.5*ob['F_q'] for ob in proby)
+    print(f'szczyty: czworoglowy {F_q_max:.0f} N ({F_q_max/BW:.1f} BW), '
+          f'PFJ {F_pfj_max:.0f} N ({F_pfj_max/BW:.1f} BW)')
 
     sciezka = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                            '..', 'web', 'dane_przysiad.js')
