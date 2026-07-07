@@ -7,10 +7,37 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
+keywords = [
+    "multibody-dynamics",
+    "dynamika-ukladow-wieloczlonowych",
+    "quaternions",
+    "euler-parameters",
+    "lagrange-multipliers",
+    "baumgarte",
+    "simulation",
+    "physics",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Operating System :: OS Independent",
+    "Natural Language :: Polish",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
 ]
+
+[project.urls]
+Repository = "https://github.com/szalaj/uw_dyn"
+Homepage = "https://github.com/szalaj/uw_dyn"
 
 [dependency-groups]
 dev = [
