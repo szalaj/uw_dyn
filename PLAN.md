@@ -336,4 +336,4 @@ Powiązane: te rozszerzenia częściowo pokrywają się z listą w `docs/ULEPSZE
 - Ważna subtelność: jakobiany więzów są dokładne tylko dla kwaternionów
   jednostkowych; wszelkie poprawki Newtona muszą normalizować kwaterniony
   (zrobione w `projekcja_polozen`)
-- Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf` (praca magisterska, 2016)
+- Teoria i oznaczenia: praca magisterska (2016), poza repozytorium (u autora)

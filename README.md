@@ -8,7 +8,7 @@ rozwijana jako pakiet wielokrotnego użytku. Autor: Marcin Szalajski.
 
 Ruch każdego członu (bryły sztywnej) opisany jest 7 współrzędnymi: 3 współrzędnymi położenia środka masy oraz 4 parametrami Eulera (kwaternionem) określającymi orientację. Równania ruchu formułowane są jako układ równań różniczkowo-algebraicznych z mnożnikami Lagrange'a, a więzy stabilizowane są metodą Baumgarte'a (parametry `alfa` i `beta`). Całkowanie po czasie realizuje procedura `sym2`, a wyniki zapisywane są do pliku CSV.
 
-Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
+Teoria i oznaczenia pochodzą z pracy magisterskiej autora (Marcin Szalajski, 2016). Praca nie jest częścią repozytorium; w razie potrzeby udostępnia ją autor.
 
 ## Struktura repozytorium
 
@@ -27,7 +27,6 @@ Teoria i oznaczenia: `docs/MSzalajski_mgr4.pdf`.
 | `przyklady/pompka.py` | pompka (push-up): ciało jako dźwignia na palcach stóp, ramiona-zawiasy, dłonie na kontakcie, łokcie napędzane PID |
 | `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
 | `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html` |
-| `docs/MSzalajski_mgr4.pdf` | praca magisterska dokumentująca metodę i obliczenia |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
 ## Instalacja i uruchomienie
@@ -71,7 +70,7 @@ uv add uw-dyn --path ../uw_dyn         # albo: pip install -e ../uw_dyn
   - `SilaWewnProst`: element sprężysto-tłumiący z siłą stałą (sprężyna, tłumik, siłownik) między punktami dwóch członów; z `tylko_rozciaganie=True` działa jak lina,
   - `SilaWPunkcie`: siła zadana w układzie ciała, zaczepiona w punkcie (np. ciąg wirnika drona, podąża za orientacją),
   - `SilaKontaktu`: jednostronny kontakt punktu ciała z podłożem z=0 (model penalty ze sprężyną, tłumieniem i tarciem),
-  - `SilaUderzenia`: kontakt penalty bryła-bryła (punkt jednego ciała vs kapsuła drugiego, np. pięść/stopa w worek treningowy); siła równa i przeciwna na oba ciała, zaczepiona w punkcie kontaktu, więc przekazuje pęd i wprawia trafione ciało w ruch,
+  - `SilaUderzenia`: kontakt penalty bryła-bryła między dwiema kapsułami (najbliższe punkty odcinków wzdłuż lokalnych osi z + promienie); `polowa_wys_i=0` to przypadek punkt-kapsuła (pięść/stopa w worek), a kapsuła-kapsuła obsługuje np. tułów-worek czy kończynę-przeciwnika; siła równa i przeciwna zaczepiona w punktach kontaktu przekazuje pęd i wprawia ciała w ruch,
   - `MomentWzgledny`: aktuator obrotowy 1 DOF w przegubie (regulator PD, opcjonalnie PID przez `ki`) dążący do zadanego kąta, do stawów zawiasowych (kolano, łokieć); opcjonalny limit momentu `moment_max`,
   - `MomentSferyczny`: napędzany staw kulisty 3 DOF (regulator PD/PID na orientacji 3D) dążący do zadanej orientacji względnej; łączyć z `Para_Sferyczna`; opcjonalny limit `moment_max`,
   - `OgranicznikKata`: miękki ogranicznik zakresu ruchu przegubu zawiasowego (łokieć, kolano); jednostronna sprężyna-tłumik aktywna poza `[kat_min, kat_max]`,

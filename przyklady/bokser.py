@@ -5,9 +5,10 @@
 # podwieszonym stawem kulistym z TLUMIENIEM przegubu (MomentSferyczny k=0,
 # c>0), wiec po uderzeniu wychyla sie i realistycznie wraca do pionu, a nie
 # buja bez konca. Ciosy trafiaja przez kontakt penalty bryla-bryla
-# (SilaUderzenia: punkt piesci/stopy vs kapsula worka) - uderzenie przekazuje
-# ped i mierzy sile/impuls. To realne trafianie w cel z bezwladnoscia, nie
-# walka z cieniem.
+# (SilaUderzenia: punkt piesci/stopy vs kapsula worka), uderzenie przekazuje
+# ped i mierzy sile/impuls. Dodatkowo tulow vs worek jako kontakt kapsula-
+# kapsula, dzieki czemu odbity worek nie przenika przez boksera. To realne
+# trafianie w cel z bezwladnoscia, nie walka z cieniem.
 #
 # Wersja anatomiczna na stawach kulistych (Etap A): barki to napedzane stawy
 # kuliste 3 DOF (Para_Sferyczna + MomentSferyczny), lokcie to zawiasy 1 DOF
@@ -256,6 +257,11 @@ def zbuduj():
     }
     for k in kontakty.values():
         ukl.dodajSileWewn(k)
+    # kontakt tulow-worek (kapsula-kapsula): worek odpycha sie od ciala i nie
+    # przenika przez boksera przy odbiciu
+    ukl.dodajSileWewn(SilaUderzenia(TUL, wektor(0, 0, 0), WOREK,
+                                    R_WOREK + 0.16, H_WOREK/2,
+                                    polowa_wys_i=TUL_H/2, k=2.0e4, c=200.0))
     ukl.grawitacja = True
 
     # cele bioder/kolan = katy w postawie neutralnej (punkt staly, bez zgadywania)

@@ -148,7 +148,7 @@ def test_uderzenie_rownowaga_sil_i_potencjal():
     przeciwna, a jest gradientem energii penalty (Q = -dV/dq stycznie)."""
     N, EPS = 2, 1e-6
     rng = np.random.default_rng(1)
-    s = SilaUderzenia(1, wektor(0.1, 0, 0), 2, promien=0.3, polowa_wys=0.2,
+    s = SilaUderzenia(1, wektor(0.1, 0, 0), 2, promien=0.3, polowa_wys_j=0.2,
                       k=1.0e4, c=0.0)
 
     def losq():
@@ -200,7 +200,7 @@ def test_uderzenie_wprawia_worek_w_ruch():
         ukl.dodajWiez(Para_Sferyczna(0, 2, wektor(0.3, 0, 1.4),
                                      wektor(0, 0, 0.4)))
         ukl.dodajSileWewn(SilaUderzenia(1, wektor(0, 0, 0), 2,
-                                        promien=0.2, polowa_wys=0.4,
+                                        promien=0.2, polowa_wys_j=0.4,
                                         k=2.0e4, c=50.0))
         ukl.grawitacja = True
         q0 = np.zeros(14)
@@ -227,7 +227,7 @@ def test_uderzenie_metryki_sila_i_impuls():
         ukl.dodajCzlon(Czlon(2, 5.0, np.diag([0.1, 0.1, 0.02])))
         ukl.dodajWiez(Para_Sferyczna(0, 2, wektor(0.3, 0, 1.4), wektor(0, 0, 0.4)))
         kontakt = SilaUderzenia(1, wektor(0, 0, 0), 2, promien=0.2,
-                                polowa_wys=0.4, k=2.0e4, c=50.0)
+                                polowa_wys_j=0.4, k=2.0e4, c=50.0)
         ukl.dodajSileWewn(kontakt)
         ukl.grawitacja = True
         q0 = np.zeros(14)
@@ -246,3 +246,29 @@ def test_uderzenie_metryki_sila_i_impuls():
     assert F_slaby > 0 and I_slaby > 0            # metryki zapisane
     assert F_mocny > F_slaby                       # szybsze -> wieksza sila
     assert I_mocny > I_slaby * 1.5                  # szybsze -> wiekszy impuls
+
+
+def test_uderzenie_kapsula_kapsula_nie_przenika():
+    """Kontakt kapsula-kapsula: cialo 1 (kapsula) leci na cialo 2 (kapsula);
+    po zderzeniu kapsuly sie nie przenikaja (odleglosc osi >= ~promien-luz),
+    a pedy sie zachowuja (odbicie/rozjscie)."""
+    ukl = Uklad()
+    ukl.dodajCzlon(Czlon(1, 1.0, np.diag([0.05, 0.05, 0.02])))
+    ukl.dodajCzlon(Czlon(2, 1.0, np.diag([0.05, 0.05, 0.02])))
+    # obie kapsuly pionowe (wzdluz lokalnej z), promien kontaktu 0.3
+    ukl.dodajSileWewn(SilaUderzenia(1, wektor(0, 0, 0), 2, promien=0.3,
+                                    polowa_wys_j=0.25, polowa_wys_i=0.25,
+                                    k=2.0e4, c=100.0))
+    ukl.grawitacja = False
+    q0 = np.zeros(14)
+    q0[0:3] = [-0.4, 0, 0]      # cialo 1 z lewej
+    q0[3:6] = [0.0, 0, 0]       # cialo 2 w srodku
+    q0[6] = 1.0
+    q0[10] = 1.0
+    dq0 = np.zeros(14)
+    dq0[0] = 3.0                # cialo 1 leci w prawo na cialo 2
+    ukl.sym2(np.concatenate((q0, dq0)), 0.0, 0.6, 5e-4)
+    # odleglosc pozioma osi kapsul na koncu
+    dx = ukl.Y[:, 3] - ukl.Y[:, 0]
+    assert dx.min() > 0.24     # nie przeniknely (promien 0.3, maly luz penetracji)
+    assert ukl.Y[-1, 3] > ukl.Y[-1, 0]   # cialo 2 wypchniete w prawo

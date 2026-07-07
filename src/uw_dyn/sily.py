@@ -212,29 +212,54 @@ class SilaKontaktu:
         return Qr_i, Qp_i, Qr_j, Qp_j
 
 
+def _najblizsze_odcinki(Ci, ui, hi, Cj, uj, hj):
+    """Najblizsze punkty dwoch odcinkow (kapsuly): odcinek i o srodku Ci,
+    kierunku ui (jedn.), polowie dlugosci hi; analogicznie j. Zwraca (Pi, Pj).
+    Standardowy algorytm z klamrowaniem parametrow do [-h, h]."""
+    r = Ci - Cj
+    b = ui.T.dot(uj).item()
+    d = ui.T.dot(r).item()
+    e = uj.T.dot(r).item()
+    denom = 1.0 - b*b                      # = |ui|^2|uj|^2 - (ui.uj)^2
+    if denom > 1e-9:
+        sa = max(-hi, min(hi, (b*e - d)/denom))
+    else:                                  # odcinki prawie rownolegle
+        sa = 0.0
+    sb = b*sa + e
+    if sb < -hj:
+        sb = -hj
+        sa = max(-hi, min(hi, b*sb - d))
+    elif sb > hj:
+        sb = hj
+        sa = max(-hi, min(hi, b*sb - d))
+    return Ci + sa*ui, Cj + sb*uj
+
+
 class SilaUderzenia:
-    """Kontakt bryla-bryla (penalty): punkt ciala i uderza w cialo j
-    modelowane jako KAPSULA (odcinek wzdluz lokalnej osi z, promien).
+    """Kontakt bryla-bryla (penalty) miedzy dwiema KAPSULAMI (odcinek wzdluz
+    lokalnej osi z + promien). Przypadek punkt-kapsula to polowa_wys_i = 0.
 
-    Gdy punkt (np. piesc na przedramieniu) wnika w kapsule (np. worek
-    bokserski): sila normalna N = max(0, k*wnikanie - c*predkosc_zblizania)
-    wzdluz normalnej od osi kapsuly do punktu. Dziala na oba ciala z
-    zachowaniem pedu; na cialo j (worek) zaczepiona w punkcie kontaktu, wiec
-    generuje wahniecie i obrot. Zamienia trafienie w prawdziwe przekazanie
-    pedu wahadlu z masa.
+    Gdy najblizsze punkty kapsul zblizaja sie ponizej sumy promieni: sila
+    normalna N = max(0, k*wnikanie - c*predkosc_zblizania) wzdluz normalnej
+    laczacej te punkty. Rowna i przeciwna na oba ciala, zaczepiona w punktach
+    kontaktu, wiec przekazuje ped i generuje obrot/wahniecie. Uzycia:
+    piesc/stopa (kapsula i lub punkt) vs worek; tulow vs worek (by worek nie
+    przenikal ciala); konczyna vs przeciwnik (dwaj zawodnicy).
 
-    czlon_i, s_i: cialo uderzajace i punkt uderzenia w jego ukladzie;
-    czlon_j: cialo-worek (kapsula wzdluz lokalnej z, srodek w COM);
-    promien = promien worka + promien piesci; polowa_wys: polowa dlugosci
-    rdzenia kapsuly; k, c: sztywnosc i tlumienie kontaktu."""
+    czlon_i, s_i: cialo uderzajace i srodek jego odcinka w ukladzie ciala
+    (dla punktu: sam punkt, polowa_wys_i=0); czlon_j: cialo trafiane (odcinek
+    wzdluz lokalnej z, srodek w COM); promien = suma promieni kapsul;
+    polowa_wys_j, polowa_wys_i: polowy dlugosci rdzeni; k, c: sztywnosc i
+    tlumienie kontaktu."""
 
-    def __init__(self, czlon_i, s_i, czlon_j, promien, polowa_wys,
-                 k=3.0e4, c=150.0):
+    def __init__(self, czlon_i, s_i, czlon_j, promien, polowa_wys_j,
+                 polowa_wys_i=0.0, k=3.0e4, c=150.0):
         self.i = czlon_i
         self.j = czlon_j
         self.s_i = np.asarray(s_i, float).reshape(3, 1)
         self.promien = promien
-        self.polowa_wys = polowa_wys
+        self.polowa_wys_j = polowa_wys_j
+        self.polowa_wys_i = polowa_wys_i
         self.k = k
         self.c = c
         self.zeruj_metryki()
@@ -252,20 +277,18 @@ class SilaUderzenia:
         return self.suma_Fn*dt
 
     def _geometria(self, q, N):
-        """Zwraca (piesc, P_na_osi, normalna_jedn, wnikanie, dane...) albo None."""
+        """Najblizsze punkty kapsul i wnikanie."""
         ri, rj = r_i(self.i, q), r_i(self.j, q)
         pi_, pj = p_i(self.i, q, N), p_i(self.j, q, N)
         Ri, Rj = R(pi_), R(pj)
-        piesc = ri + Ri.dot(self.s_i)
-        os_j = Rj[:, 2:3]                       # lokalna z worka (swiat)
-        # najblizszy punkt odcinka [COM - h*os, COM + h*os] do piesci
-        t = (piesc - rj).T.dot(os_j).item()
-        t = max(-self.polowa_wys, min(self.polowa_wys, t))
-        P = rj + t*os_j                         # punkt na osi kapsuly
-        d = piesc - P
+        Ci = ri + Ri.dot(self.s_i)             # srodek odcinka i
+        ui, uj = Ri[:, 2:3], Rj[:, 2:3]        # lokalne osie z (swiat)
+        Pi, Pj = _najblizsze_odcinki(Ci, ui, self.polowa_wys_i,
+                                     rj, uj, self.polowa_wys_j)
+        d = Pi - Pj
         dist = float(np.linalg.norm(d))
         wnikanie = self.promien - dist
-        return piesc, P, d, dist, wnikanie, Ri, Rj, pi_, pj
+        return Pi, Pj, d, dist, wnikanie, Ri, Rj, pi_, pj
 
     def energia_potencjalna(self, q, N):
         _, _, _, _, wnikanie, *_ = self._geometria(q, N)
@@ -279,22 +302,23 @@ class SilaUderzenia:
         Qr_j = np.zeros((3, 1))
         Qp_j = np.zeros((4, 1))
 
-        piesc, P, d, dist, wnikanie, Ri, Rj, pi_, pj = self._geometria(q, N)
+        Pi, Pj, d, dist, wnikanie, Ri, Rj, pi_, pj = self._geometria(q, N)
         if wnikanie <= 0 or dist < 1e-9:
             return Qr_i, Qp_i, Qr_j, Qp_j
-        n = d/dist                              # od osi worka do piesci (3,1)
+        n = d/dist                              # od punktu j do punktu i (3,1)
 
-        # predkosc punktu uderzenia (cialo i) i punktu kontaktu (cialo j)
+        # ramiona kontaktu w ukladach cial i predkosci punktow kontaktu
+        s_i = Ri.transpose().dot(Pi - r_i(self.i, q))
+        s_j = Rj.transpose().dot(Pj - r_i(self.j, q))
         Gi, Gj = G(pi_), G(pj)
         om_i = 2*Gi.dot(dp_i(self.i, dq, N))
         om_j = 2*Gj.dot(dp_i(self.j, dq, N))
-        v_i = dr_i(self.i, dq) + Ri.dot(skew(om_i)).dot(self.s_i)
-        s_j = Rj.transpose().dot(P - r_i(self.j, q))   # punkt kontaktu w ukl. j
+        v_i = dr_i(self.i, dq) + Ri.dot(skew(om_i)).dot(s_i)
         v_j = dr_i(self.j, dq) + Rj.dot(skew(om_j)).dot(s_j)
         v_zbl = (v_i - v_j).T.dot(n).item()     # predkosc zblizania wzdluz n
 
         Fn = max(0.0, self.k*wnikanie - self.c*v_zbl)
-        F = Fn*n                                # sila na piesc (odpychajaca)
+        F = Fn*n                                # sila na cialo i (odpychajaca)
 
         # metryki uderzenia (szczyt i suma do impulsu)
         if Fn > 0.0:
@@ -303,8 +327,8 @@ class SilaUderzenia:
             self.n_kontaktu += 1
 
         Qr_i = F
-        Qp_i = 2*Gi.transpose().dot(skew(self.s_i).dot(Ri.transpose().dot(F)))
-        Qr_j = -F                               # reakcja na worek
+        Qp_i = 2*Gi.transpose().dot(skew(s_i).dot(Ri.transpose().dot(F)))
+        Qr_j = -F                               # reakcja na cialo j
         Qp_j = 2*Gj.transpose().dot(skew(s_j).dot(Rj.transpose().dot(-F)))
         return Qr_i, Qp_i, Qr_j, Qp_j
 
