@@ -6,5 +6,5 @@ dist/
 lancuch.csv
 *.blend1
 
-# praca magisterska: trzymana lokalnie, poza repozytorium
-docs/MSzalajski_mgr4.pdf
+# PDF-y w docs trzymane lokalnie, poza repozytorium
+docs/*.pdf

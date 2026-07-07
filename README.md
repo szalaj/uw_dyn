@@ -1,14 +1,14 @@
 # uw_dyn: dynamika 3D układów wieloczłonowych
 
 Biblioteka Pythona do obliczeń dynamiki przestrzennej układów wieloczłonowych
-(multibody dynamics). Powstała w ramach pracy magisterskiej (2016), obecnie
-rozwijana jako pakiet wielokrotnego użytku. Autor: Marcin Szalajski.
+(multibody dynamics). Rozwijana jako pakiet wielokrotnego użytku.
+Autor: Marcin Szalajski.
 
 ## Opis metody
 
 Ruch każdego członu (bryły sztywnej) opisany jest 7 współrzędnymi: 3 współrzędnymi położenia środka masy oraz 4 parametrami Eulera (kwaternionem) określającymi orientację. Równania ruchu formułowane są jako układ równań różniczkowo-algebraicznych z mnożnikami Lagrange'a, a więzy stabilizowane są metodą Baumgarte'a (parametry `alfa` i `beta`). Całkowanie po czasie realizuje procedura `sym2`, a wyniki zapisywane są do pliku CSV.
 
-Teoria i oznaczenia pochodzą z pracy magisterskiej autora (Marcin Szalajski, 2016). Praca nie jest częścią repozytorium; w razie potrzeby udostępnia ją autor.
+Teoria i oznaczenia: opis metody powyżej oraz w komentarzach kodu źródłowego.
 
 ## Struktura repozytorium
 

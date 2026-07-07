@@ -102,7 +102,7 @@ Wszystkie pokryte testami (40 testów). Dalsze kierunki: `docs/ULEPSZENIA.md`.
 - [x] Testy (pytest, 15 testów): algebra (skew, R, G, u2p, EA_to_EP),
       wahadło fizyczne (równowaga, okres drgań kontra wzór analityczny,
       zachowanie energii, spełnienie więzów), regresja łańcucha 4 członów
-- [x] Przykład przeniesiony do `przyklady/`, praca magisterska do `docs/`
+- [x] Przykład przeniesiony do `przyklady/`
 
 ### Krok 2: dopracowanie fizyki (wersja wzorcowa) [ZROBIONE, 2026-07-05]
 
@@ -336,4 +336,3 @@ Powiązane: te rozszerzenia częściowo pokrywają się z listą w `docs/ULEPSZE
 - Ważna subtelność: jakobiany więzów są dokładne tylko dla kwaternionów
   jednostkowych; wszelkie poprawki Newtona muszą normalizować kwaterniony
   (zrobione w `projekcja_polozen`)
-- Teoria i oznaczenia: praca magisterska (2016), poza repozytorium (u autora)

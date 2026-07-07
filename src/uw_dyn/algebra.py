@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # uw_dyn: dynamika 3D ukladow wieloczlonowych
-# autor: Marcin Szalajski (praca magisterska, 2016; pakiet od 2026)
+# autor: Marcin Szalajski (2016; pakiet od 2026)
 
 """Algebra: wektory, kwaterniony (parametry Eulera), macierze obrotu."""
 

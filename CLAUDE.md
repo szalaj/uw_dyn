@@ -4,7 +4,7 @@ Wskazówki dla Claude Code przy pracy z tym repozytorium.
 
 ## Czym jest ten projekt
 
-Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibody dynamics), wywodząca się z pracy magisterskiej (2016, Marcin Szalajski). Orientacja członów opisana parametrami Eulera (kwaternionami), równania ruchu z mnożnikami Lagrange'a, stabilizacja więzów metodą Baumgarte'a.
+Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibody dynamics). Orientacja członów opisana parametrami Eulera (kwaternionami), równania ruchu z mnożnikami Lagrange'a, stabilizacja więzów metodą Baumgarte'a.
 
 **Najpierw przeczytaj `PLAN.md`**: tam jest mapa drogowa, podjęte decyzje architektoniczne i aktualny stan prac. Najważniejsze decyzje: rozwijamy wszystko w Pythonie (port do Rust tylko warunkowo, gdyby optymalizacja nie wystarczyła); bibliotekę rozbudowujemy i weryfikujemy na trzech przykładach kanonicznych: przysiad, robot kroczący (docelowo mini-piesek) i kwadrokopter.
 
@@ -22,7 +22,6 @@ Biblioteka Pythona do dynamiki przestrzennej układów wieloczłonowych (multibo
 - `przyklady/`: `lancuch02.py` (CSV), trzy przykłady kanoniczne (`przysiad.py`, `robot_kroczacy.py` compass gait → `piesek.py` czworonóg robiący przysiady `dt=0.0005`, `dron.py` kwadrokopter) oraz `bokser.py` (kickboxing: sierpowy + front kick, nogi ze stawem kolanowym; worek to prawdziwe ciało/ciężkie wahadło 22 kg z tłumionym przegubem (`MomentSferyczny` k=0 jako tłumik, worek wraca do pionu), kontaktem `SilaUderzenia` i metrykami uderzenia), `pompka.py` (push-up: deska ciała na przegubie w palcach stóp, ramiona-zawiasy, dłonie na kontakcie, łokcie PID; `sym3` półniejawny) i `balans.py` (Etap B: pełna sylwetka na stopach z regulatorem balansu PID, `dt=2e-4`, kosztowny); `lancuch.blend` to scena Blendera.
 - `web/`: wizualizacje Three.js (`przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html`, `krok.html`, `pompka.html`); pliki `dane_*.js` generują skrypty z `przyklady/`.
 - `docs/ULEPSZENIA.md`: research kierunków rozwoju biblioteki z priorytetami.
-- Teoria i oznaczenia pochodzą z pracy magisterskiej autora (2016); praca nie jest częścią repozytorium, trzymana jest lokalnie u autora.
 
 ## Nowe siły (interfejs `sila(q, dq, N) -> (Qr_i, Qp_i, Qr_j, Qp_j)`)
 
