@@ -16,17 +16,10 @@ Teoria i oznaczenia: opis metody powyżej oraz w komentarzach kodu źródłowego
 |------|------|
 | `src/uw_dyn/` | pakiet: moduły `algebra`, `czlony`, `wiezy`, `sily`, `uklad` |
 | `tests/` | testy pytest: algebra, walidacja fizyczna, rzutowanie, energia |
-| `przyklady/lancuch02.py` | łańcuch czterech członów (wynik do CSV) |
 | `przyklady/przysiad.py` | staw kolanowy podczas przysiadu (mięśnie sprężysto-tłumiące) |
-| `przyklady/robot_kroczacy.py` | najprostszy robot kroczący (chód cyrklowy) |
-| `przyklady/piesek.py` | mini-piesek: czworonóg w chodzie pełzającym |
 | `przyklady/dron.py` | kwadrokopter z ładunkiem podwieszonym na linie |
 | `przyklady/bokser.py` | kickboxing na worku: sierpowy i front kick; worek to wahadło z masą, ciosy trafiają w nie przez kontakt bryła-bryła |
-| `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
-| `przyklady/krok.py` | praca nóg: krok w bok z balansem PID (mechanika + balans; kierunkowy krok w toku) |
-| `przyklady/pompka.py` | pompka (push-up): ciało jako dźwignia na palcach stóp, ramiona-zawiasy, dłonie na kontakcie, łokcie napędzane PID |
-| `przyklady/czworaka.py` | człowiek na czworaka: pełna sylwetka pełznie do przodu (dłonie i kolana na kontakcie), stawy kuliste w barkach i biodrach, sterowanie postawą względem tułowia odniesienia |
-| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html`, `czworaka.html` |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `dron.html`, `bokser.html` |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
 ## Instalacja i uruchomienie
@@ -36,15 +29,11 @@ Projekt używa [uv](https://docs.astral.sh/uv/):
 ```bash
 uv sync                                # instalacja pakietu i zależności
 uv run pytest                          # testy
-uv run python przyklady/lancuch02.py   # przykładowa symulacja -> lancuch.csv
 
 # przykłady z wizualizacją web (Three.js, wymagany internet dla CDN):
 uv run python przyklady/przysiad.py         # generuje web/dane_przysiad.js
-uv run python przyklady/robot_kroczacy.py   # generuje web/dane_robot.js
-uv run python przyklady/piesek.py           # generuje web/dane_piesek.js
 uv run python przyklady/dron.py             # generuje web/dane_dron.js
 uv run python przyklady/bokser.py           # generuje web/dane_bokser.js
-uv run python przyklady/czworaka.py         # generuje web/dane_czworaka.js
 cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/bokser.html
 ```
 
