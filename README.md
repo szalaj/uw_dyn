@@ -27,15 +27,39 @@ Teoria i oznaczenia: opis metody powyżej oraz w komentarzach kodu źródłowego
 Projekt używa [uv](https://docs.astral.sh/uv/):
 
 ```bash
-uv sync                                # instalacja pakietu i zależności
-uv run pytest                          # testy
-
-# przykłady z wizualizacją web (Three.js, wymagany internet dla CDN):
-uv run python przyklady/przysiad.py         # generuje web/dane_przysiad.js
-uv run python przyklady/dron.py             # generuje web/dane_dron.js
-uv run python przyklady/bokser.py           # generuje web/dane_bokser.js
-cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/bokser.html
+uv sync          # instalacja pakietu i zależności
+uv run pytest    # testy (wszystkie muszą przechodzić)
 ```
+
+### Uruchamianie przykładów
+
+Każdy przykład to skrypt w `przyklady/`. Uruchomienie liczy symulację, wypisuje
+wyniki w terminalu i zapisuje dane animacji do `web/dane_<nazwa>.js`:
+
+```bash
+uv run python przyklady/przysiad.py    # staw kolanowy + biomechanika obciążeń
+uv run python przyklady/dron.py        # kwadrokopter z ładunkiem na linie
+uv run python przyklady/bokser.py      # kickboxing na worku (metryki uderzeń)
+```
+
+### Podgląd wizualizacji (Three.js)
+
+Po wygenerowaniu danych uruchom lokalny serwer w katalogu `web/` i otwórz stronę
+przykładu w przeglądarce (wizualizacje ładują Three.js z CDN, więc potrzebny jest
+internet):
+
+```bash
+cd web && python3 -m http.server 8000
+```
+
+Następnie otwórz w przeglądarce:
+
+- `http://localhost:8000/przysiad.html`
+- `http://localhost:8000/dron.html`
+- `http://localhost:8000/bokser.html`
+
+Sterowanie w widoku: mysz obraca kamerę, kółko przybliża, a pasek na dole daje
+pauzę, suwak klatek, tempo i pętlę.
 
 Jako zależność w innym projekcie:
 
