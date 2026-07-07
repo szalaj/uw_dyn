@@ -25,7 +25,6 @@ Teoria i oznaczenia: opis metody powyżej oraz w komentarzach kodu źródłowego
 | `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
 | `przyklady/krok.py` | praca nóg: krok w bok z balansem PID (mechanika + balans; kierunkowy krok w toku) |
 | `przyklady/pompka.py` | pompka (push-up): ciało jako dźwignia na palcach stóp, ramiona-zawiasy, dłonie na kontakcie, łokcie napędzane PID |
-| `przyklady/lancuch.blend` | scena Blendera do wizualizacji ruchu łańcucha |
 | `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html` |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 

@@ -90,7 +90,7 @@ Wszystkie pokryte testami (40 testów). Dalsze kierunki: `docs/ULEPSZENIA.md`.
    - dla przeglądarki przez WebAssembly (wasm-bindgen).
    Wtedy wersja Python zostaje implementacją wzorcową do testów zgodności.
 3. **Wizualizacja: web + Three.js** jako podstawa (interaktywna, na żywo);
-   Blender opcjonalnie do renderów (scena `przyklady/lancuch.blend`).
+   Blender opcjonalnie do renderów.
 
 ## Mapa drogowa
 
@@ -163,7 +163,7 @@ Wszystkie pokryte testami (40 testów). Dalsze kierunki: `docs/ULEPSZENIA.md`.
       Parametry z przeszukiwania siatki (COM=0.8 przy biodrze kluczowe).
 - [x] Strony web: Three.js z CDN (wymagają internetu); uruchamianie:
       `cd web && python3 -m http.server 8000` i otworzyć stronę
-- [ ] Opcjonalnie: skrypt importu CSV do Blendera (`przyklady/lancuch.blend`)
+- [ ] Opcjonalnie: skrypt importu CSV do Blendera
 
 ### Krok 5: port rdzenia do Rust [WARUNKOWY: tylko gdy performance siada]
 
