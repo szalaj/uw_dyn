@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Dynamika 3D ukladow wieloczlonowych (multibody dynamics): parametry Eulera, mnozniki Lagrange'a, stabilizacja Baumgarte'a"
 authors = [{ name = "Marcin Szalajski" }]
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24",
