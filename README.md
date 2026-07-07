@@ -25,7 +25,8 @@ Teoria i oznaczenia: opis metody powyżej oraz w komentarzach kodu źródłowego
 | `przyklady/balans.py` | pełna sylwetka stojąca na stopach z regulatorem balansu PID |
 | `przyklady/krok.py` | praca nóg: krok w bok z balansem PID (mechanika + balans; kierunkowy krok w toku) |
 | `przyklady/pompka.py` | pompka (push-up): ciało jako dźwignia na palcach stóp, ramiona-zawiasy, dłonie na kontakcie, łokcie napędzane PID |
-| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html` |
+| `przyklady/czworaka.py` | człowiek na czworaka: pełna sylwetka pełznie do przodu (dłonie i kolana na kontakcie), stawy kuliste w barkach i biodrach, sterowanie postawą względem tułowia odniesienia |
+| `web/` | wizualizacje Three.js: `przysiad.html`, `robot.html`, `piesek.html`, `dron.html`, `bokser.html`, `balans.html`, `czworaka.html` |
 | `PLAN.md` | mapa drogowa rozwoju i stan prac |
 
 ## Instalacja i uruchomienie
@@ -43,6 +44,7 @@ uv run python przyklady/robot_kroczacy.py   # generuje web/dane_robot.js
 uv run python przyklady/piesek.py           # generuje web/dane_piesek.js
 uv run python przyklady/dron.py             # generuje web/dane_dron.js
 uv run python przyklady/bokser.py           # generuje web/dane_bokser.js
+uv run python przyklady/czworaka.py         # generuje web/dane_czworaka.js
 cd web && python3 -m http.server 8000       # potem otworzyć np. localhost:8000/bokser.html
 ```
 
